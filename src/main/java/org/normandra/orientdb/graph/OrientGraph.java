@@ -351,17 +351,8 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         return null;
     }
 
-    public <T> OrientEdge<T> getEdge(final Class<T> clazz, final Object key) throws NormandraException {
-        if (null == clazz || null == key) {
-            return null;
-        }
-
-        // check meta context
-        final EntityMeta meta = this.meta.getEdgeMeta(clazz);
-        if (null == meta) {
-            return null;
-        }
-
+    @Override
+    public OrientEdge getEdge(final EntityMeta meta, final Object key) throws NormandraException {
         // check cache
         final OrientEdge cached = this.cache.get(meta, key, OrientEdge.class);
         if (cached != null) {
@@ -374,8 +365,8 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
             final OIdentifiable document = this.findIdByKey(meta, key);
             final com.tinkerpop.blueprints.impls.orient.OrientEdge orientEdge = document != null ? this.graph.getEdge(document) : null;
             if (orientEdge != null) {
-                final EntityReference<T> reference = new OrientEntityReference<>(this, meta, document);
-                final OrientEdge<T> edge = this.buildEdge(meta, key, orientEdge, reference);
+                final EntityReference reference = new OrientEntityReference<>(this, meta, document);
+                final OrientEdge edge = this.buildEdge(meta, key, orientEdge, reference);
                 if (edge != null) {
                     return edge;
                 }
@@ -386,6 +377,19 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
 
         // not found
         return null;
+    }
+
+    public <T> OrientEdge<T> getEdge(final Class<T> clazz, final Object key) throws NormandraException {
+        if (null == clazz || null == key) {
+            return null;
+        }
+
+        final EntityMeta meta = this.meta.getEdgeMeta(clazz);
+        if (null == meta) {
+            return null;
+        }
+
+        return getEdge(meta, key);
     }
 
     public <T> Collection<Edge> getEdges(final Class<T> clazz, final Iterable<?> keys) throws NormandraException {
