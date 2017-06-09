@@ -110,7 +110,7 @@
                         <Bundle-Name>normandra-orientdb</Bundle-Name>
                         <Embed-Transitive>true</Embed-Transitive>
                         <Embed-Dependency>
-                            *orient*|*concurrentlinkedhashmap*
+                            *orient*|*concurrentlinkedhashmap*|*blueprints*
                         </Embed-Dependency>
                         <Export-Package>
                             org.normandra.orientdb.*; version="${project.version}"
