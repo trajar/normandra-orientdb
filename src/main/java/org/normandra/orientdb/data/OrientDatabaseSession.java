@@ -451,7 +451,9 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
             }
             if (meta.validate(data)) {
                 final EntityBuilder builder = new EntityBuilder(this, new OrientDataFactory(this));
-                return builder.build(meta, data);
+                final Object instance = builder.build(meta, data);
+                this.cache.put(meta, key, instance);
+                return instance;
             }
         } catch (final Exception e) {
             throw new NormandraException("Unable to get orientdb document by key [" + key + "].", e);
