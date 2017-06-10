@@ -207,6 +207,8 @@ import org.normandra.cache.EntityCache;
 import org.normandra.data.ColumnAccessor;
 import org.normandra.meta.ColumnMeta;
 import org.normandra.meta.EntityMeta;
+import org.normandra.orientdb.graph.OrientEdge;
+import org.normandra.orientdb.graph.OrientNode;
 import org.normandra.util.EntityBuilder;
 import org.normandra.util.EntityPersistence;
 import org.slf4j.Logger;
@@ -431,7 +433,13 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 
         final Object existing = this.cache.get(meta, key, Object.class);
         if (existing != null) {
-            return existing;
+            if (existing instanceof OrientNode) {
+                return ((OrientNode) existing).getEntity();
+            } else if (existing instanceof OrientEdge) {
+                return ((OrientEdge) existing).getEntity();
+            } else {
+                return existing;
+            }
         }
 
         try {
@@ -466,8 +474,23 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         final Set<Object> keyset = new HashSet<>(Arrays.asList(keys));
         final Map<Object, Object> cached = this.cache.find(meta, Arrays.asList(keys), Object.class);
         keyset.removeAll(cached.keySet());
+        final List<Object> cachedElements = cached.values().stream()
+                .map((x) -> {
+                    try {
+                        if (x instanceof OrientNode) {
+                            return ((OrientNode) x).getEntity();
+                        } else if (x instanceof OrientEdge) {
+                            return ((OrientEdge) x).getEntity();
+                        } else {
+                            return x;
+                        }
+                    } catch (final NormandraException e) {
+                        throw new IllegalStateException("Unable to unpack entities.", e);
+                    }
+                })
+                .collect(Collectors.toList());
         if (keyset.isEmpty()) {
-            return Collections.unmodifiableList(new ArrayList<>(cached.values()));
+            return Collections.unmodifiableList(cachedElements);
         }
 
         // query ids for each entity meta
@@ -489,7 +512,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         }
 
         // build entities
-        final List<Object> result = new ArrayList<>(cached.values());
+        final List<Object> result = new ArrayList<>(cachedElements);
         for (final Map.Entry<Object, Map<ColumnMeta, Object>> entry : entityData.entrySet()) {
             final Map<ColumnMeta, Object> data = entry.getValue();
             if (meta.validate(data)) {
