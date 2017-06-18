@@ -251,6 +251,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
     @Override
     public void clear() {
         this.cache.clear();
+        this.database.getLocalCache().invalidate();
     }
 
     @Override
