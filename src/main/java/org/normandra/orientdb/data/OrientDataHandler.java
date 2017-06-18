@@ -244,7 +244,7 @@ public class OrientDataHandler implements DataHandler
         else if (!keymap.isEmpty())
         {
             final String schemaName = entity.getTable();
-            document = this.session.getDatabase().newInstance(schemaName);
+            document = this.session.database().newInstance(schemaName);
         }
 
         if (null == document)

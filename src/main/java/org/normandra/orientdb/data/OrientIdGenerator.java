@@ -255,7 +255,7 @@ public class OrientIdGenerator implements IdGenerator
             {
                 if (session instanceof OrientDatabaseSession)
                 {
-                    final ODatabaseDocumentTx db = ((OrientDatabaseSession) session).getDatabase();
+                    final ODatabaseDocumentTx db = ((OrientDatabaseSession) session).database();
                     return this.generateWithDatabase(db, entity);
                 }
                 else

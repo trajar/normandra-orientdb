@@ -196,6 +196,7 @@ package org.normandra.orientdb.graph;
 
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import org.normandra.NormandraException;
 import org.normandra.Transaction;
@@ -243,7 +244,7 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         return this.meta;
     }
 
-    public final com.tinkerpop.blueprints.impls.orient.OrientGraph api() {
+    public final com.tinkerpop.blueprints.impls.orient.OrientGraph graph() {
         return this.graph;
     }
 
@@ -259,24 +260,31 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
             throw new IllegalArgumentException("Entity [" + meta + "] is not a registered node type.");
         }
 
+        final OrientVertex vertex;
         try (final Transaction tx = this.beginTransaction()) {
+            // ensure we don't already have node
+            if (this.exists(meta, key)) {
+                throw new NormandraException("Node already exists.");
+            }
+
             // save entity using property model
             final String schemaName = meta.getTable();
             final String clusterName = null;
-            final OrientVertex vertex = this.graph.addVertex(schemaName, clusterName);
+            vertex = this.graph.addVertex(schemaName, clusterName);
             if (null == vertex) {
                 return null;
             }
-            final PropertyModel model = this.buildModel(meta, vertex.getRecord());
+            final PropertyModel model = this.buildModel(meta, vertex);
             final GraphDataHandler handler = new GraphDataHandler(model);
             new EntityPersistence(this).save(meta, instance, handler);
-            final EntityReference reference = new StaticEntityReference<>(instance);
-            final OrientNode node = this.buildNode(meta, key, vertex, reference);
             tx.success();
-            return node;
         } catch (final Exception e) {
             throw new NormandraException("Unable to add node [" + instance + "].", e);
         }
+
+        final EntityReference reference = new StaticEntityReference<>(instance);
+        final OrientNode node = this.buildNode(meta, key, vertex, reference);
+        return node;
     }
 
     @Override
@@ -474,7 +482,7 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         return new OrientDataFactory(this);
     }
 
-    final PropertyModel buildModel(final EntityMeta meta, final ODocument document) {
+    final PropertyModel buildModel(final EntityMeta meta, final OrientElement document) {
         final PropertyFilter filter = this.meta.getPropertyFilter(meta);
         if (filter != null) {
             return new OrientPropertyModel(meta, document, filter);
@@ -502,7 +510,7 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
             return cached;
         }
 
-        final OrientNode<T> orientNode = new OrientNode<>(this, vertex, data);
+        final OrientNode<T> orientNode = new OrientNode<>(this, vertex, meta, data);
         this.cache.put(meta, key, orientNode);
         return orientNode;
     }
@@ -517,7 +525,7 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
             return cached;
         }
 
-        final OrientEdge<T> orientEdge = new OrientEdge<>(this, edge, data);
+        final OrientEdge<T> orientEdge = new OrientEdge<>(this, edge, meta, data);
         this.cache.put(meta, key, orientEdge);
         return orientEdge;
     }

@@ -251,15 +251,15 @@ public class OrientNonBlockingGraphQuery implements Iterable<OrientElement> {
     }
 
     private Iterator execute() {
-        final OrientNonBlockingListener listener = new OrientNonBlockingListener(this.database.api().getRawGraph());
+        final OrientNonBlockingListener listener = new OrientNonBlockingListener(this.database.graph().getRawGraph());
         final OSQLNonBlockingQuery q = new OSQLNonBlockingQuery(this.query, listener);
         if (!parameterList.isEmpty()) {
-            database.api().getRawGraph().command(q).execute(parameterList.toArray());
+            database.graph().getRawGraph().command(q).execute(parameterList.toArray());
         } else if (!parameterMap.isEmpty()) {
-            database.api().getRawGraph().command(q).execute(parameterMap);
+            database.graph().getRawGraph().command(q).execute(parameterMap);
         } else {
-            database.api().getRawGraph().command(q).execute(Collections.emptyMap());
+            database.graph().getRawGraph().command(q).execute(Collections.emptyMap());
         }
-        return new OrientDynaElementIterable(database.api(), listener).iterator();
+        return new OrientDynaElementIterable(database.graph(), listener).iterator();
     }
 }

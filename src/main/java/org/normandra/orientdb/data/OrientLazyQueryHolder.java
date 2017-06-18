@@ -211,8 +211,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>
  * Date: 4/5/14
  */
-public class OrientLazyQueryHolder implements DataHolder
-{
+public class OrientLazyQueryHolder implements DataHolder {
     private final AtomicBoolean loaded = new AtomicBoolean(false);
 
     private final OrientDatabaseSession session;
@@ -229,8 +228,7 @@ public class OrientLazyQueryHolder implements DataHolder
 
     private final List<ODocument> documents = new ArrayList<>();
 
-    public OrientLazyQueryHolder(final OrientDatabaseSession session, final EntityMeta meta, final boolean collection, final String query, final List<Object> params, final OrientDocumentHandler handler)
-    {
+    public OrientLazyQueryHolder(final OrientDatabaseSession session, final EntityMeta meta, final boolean collection, final String query, final List<Object> params, final OrientDocumentHandler handler) {
         this.session = session;
         this.entity = meta;
         this.collection = collection;
@@ -240,73 +238,52 @@ public class OrientLazyQueryHolder implements DataHolder
     }
 
     @Override
-    public boolean isEmpty()
-    {
-        try
-        {
+    public boolean isEmpty() {
+        try {
             return this.ensureResults().isEmpty();
-        }
-        catch (final Exception e)
-        {
+        } catch (final Exception e) {
             throw new IllegalStateException("Unable to query lazy loaded results from [" + this.entity + "].", e);
         }
     }
 
     @Override
-    public Object get() throws NormandraException
-    {
+    public Object get() throws NormandraException {
         final Collection<ODocument> results = this.ensureResults();
-        if (null == results || results.isEmpty())
-        {
+        if (null == results || results.isEmpty()) {
             return null;
         }
-        try
-        {
-            if (this.collection)
-            {
+        try {
+            if (this.collection) {
                 final List<Object> items = new ArrayList<>(results.size());
-                for (final ODocument doc : results)
-                {
+                for (final ODocument doc : results) {
                     final Object item = this.handler.convert(doc);
-                    if (item != null)
-                    {
+                    if (item != null) {
                         items.add(item);
                     }
                 }
                 return Collections.unmodifiableCollection(items);
-            }
-            else
-            {
+            } else {
                 return this.handler.convert(results.iterator().next());
             }
-        }
-        catch (final Exception e)
-        {
+        } catch (final Exception e) {
             throw new NormandraException("Unable to toEntity lazy loaded results for entity [" + this.entity + "].", e);
         }
     }
 
-    private List<ODocument> ensureResults() throws NormandraException
-    {
-        if (this.loaded.get())
-        {
+    private List<ODocument> ensureResults() throws NormandraException {
+        if (this.loaded.get()) {
             return Collections.unmodifiableList(this.documents);
         }
 
-        try
-        {
+        try {
             this.documents.clear();
-            for (final Object item : this.session.getDatabase().query(new OSQLSynchQuery(this.query), parameters.toArray()))
-            {
-                if (item instanceof ODocument)
-                {
+            for (final Object item : this.session.database().query(new OSQLSynchQuery(this.query), parameters.toArray())) {
+                if (item instanceof ODocument) {
                     this.documents.add((ODocument) item);
                 }
             }
             this.loaded.getAndSet(true);
-        }
-        catch (final Exception e)
-        {
+        } catch (final Exception e) {
             throw new NormandraException("Unable to get orientdb document by query [" + this.query + "].", e);
         }
         return Collections.unmodifiableList(this.documents);

@@ -195,7 +195,7 @@
 package org.normandra.orientdb.graph;
 
 import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import org.apache.commons.lang.NullArgumentException;
 import org.normandra.NormandraException;
 import org.normandra.meta.ColumnMeta;
@@ -211,15 +211,15 @@ import java.util.Map;
 public class OrientPropertyModel implements PropertyModel {
     private final EntityMeta meta;
 
-    private final ODocument document;
+    private final OrientElement document;
 
     private final PropertyFilter filter;
 
-    public OrientPropertyModel(final EntityMeta meta, final ODocument doc) {
+    public OrientPropertyModel(final EntityMeta meta, final OrientElement doc) {
         this(meta, doc, EmptyPropertyFilter.getInstance());
     }
 
-    public OrientPropertyModel(final EntityMeta meta, final ODocument doc, final PropertyFilter filter) {
+    public OrientPropertyModel(final EntityMeta meta, final OrientElement doc, final PropertyFilter filter) {
         if (null == meta) {
             throw new NullArgumentException("meta");
         }
@@ -236,7 +236,7 @@ public class OrientPropertyModel implements PropertyModel {
 
     @Override
     public Map<ColumnMeta, Object> get() throws NormandraException {
-        return OrientUtils.unpackValues(this.meta, this.document);
+        return OrientUtils.unpackValues(this.meta, this.document.getRecord());
     }
 
     @Override
@@ -244,6 +244,7 @@ public class OrientPropertyModel implements PropertyModel {
         if (null == data || data.isEmpty()) {
             return;
         }
+
         boolean updated = false;
         for (final Map.Entry<ColumnMeta, Object> entry : data.entrySet()) {
             final ColumnMeta column = entry.getKey();
@@ -252,14 +253,16 @@ public class OrientPropertyModel implements PropertyModel {
                 if (packed != null) {
                     final String name = column.getName();
                     final OType type = OrientUtils.columnType(column);
-                    this.document.field(name, packed, type);
+                    this.document.setProperty(name, packed, type);
                     updated = true;
                 }
             }
         }
+
         if (!updated) {
             return;
         }
+
         this.document.save();
     }
 

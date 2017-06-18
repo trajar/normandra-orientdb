@@ -530,8 +530,12 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         return Collections.unmodifiableList(result);
     }
 
-    protected final ODatabaseDocumentTx getDatabase() {
+    public final ODatabaseDocumentTx database() {
         return this.database;
+    }
+
+    public final EntityCache cache() {
+        return this.cache;
     }
 
     public final ODocument findDocument(final OIdentifiable item) {

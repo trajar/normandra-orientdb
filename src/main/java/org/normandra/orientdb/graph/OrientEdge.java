@@ -205,6 +205,7 @@ import org.normandra.data.StaticEntityReference;
 import org.normandra.graph.Edge;
 import org.normandra.graph.Node;
 import org.normandra.meta.EntityMeta;
+import org.normandra.orientdb.data.OrientUtils;
 import org.normandra.property.PropertyModel;
 import org.normandra.util.EntityPersistence;
 
@@ -216,11 +217,13 @@ import org.normandra.util.EntityPersistence;
 public class OrientEdge<T> implements Edge<T> {
     private final OrientGraph graph;
 
+    private final EntityMeta meta;
+
     private final com.tinkerpop.blueprints.impls.orient.OrientEdge edge;
 
     private EntityReference<T> data;
 
-    public OrientEdge(final OrientGraph graph, final com.tinkerpop.blueprints.impls.orient.OrientEdge edge, final EntityReference<T> ref) {
+    public OrientEdge(final OrientGraph graph, final com.tinkerpop.blueprints.impls.orient.OrientEdge edge, final EntityMeta meta, final EntityReference<T> ref) {
         if (null == graph) {
             throw new NullArgumentException("graph");
         }
@@ -232,10 +235,11 @@ public class OrientEdge<T> implements Edge<T> {
         }
         this.graph = graph;
         this.edge = edge;
+        this.meta = meta;
         this.data = ref;
     }
 
-    public com.tinkerpop.blueprints.impls.orient.OrientEdge api() {
+    public com.tinkerpop.blueprints.impls.orient.OrientEdge element() {
         return this.edge;
     }
 
@@ -247,6 +251,9 @@ public class OrientEdge<T> implements Edge<T> {
         } catch (final Exception e) {
             throw new NormandraException("Unable to remove edge [" + this.edge + "].", e);
         }
+
+        final Object key = OrientUtils.unpackKey(this.meta, this.edge.getRecord());
+        this.graph.cache().remove(this.meta, key);
     }
 
     @Override
@@ -301,8 +308,7 @@ public class OrientEdge<T> implements Edge<T> {
 
         try (final Transaction tx = this.graph.beginTransaction()) {
             // update model
-            final ODocument document = this.edge.getRecord();
-            final PropertyModel model = this.graph.buildModel(meta, document);
+            final PropertyModel model = this.graph.buildModel(meta, this.edge);
             final GraphDataHandler handler = new GraphDataHandler(model);
             new EntityPersistence(this.graph).save(meta, entity, handler);
             tx.success();
@@ -311,7 +317,9 @@ public class OrientEdge<T> implements Edge<T> {
         }
 
         // update instance
+        final Object key = meta.getId().fromEntity(entity);
         this.data = new StaticEntityReference<>(entity);
+        this.graph.cache().put(meta, key, this);
     }
 
     @Override
@@ -321,28 +329,20 @@ public class OrientEdge<T> implements Edge<T> {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
 
-        OrientEdge that = (OrientEdge) o;
+        OrientEdge<?> that = (OrientEdge<?>) o;
 
-        if (edge != null ? !edge.equals(that.edge) : that.edge != null) {
-            return false;
-        }
-        if (graph != null ? !graph.equals(that.graph) : that.graph != null) {
-            return false;
-        }
-
-        return true;
+        if (graph != null ? !graph.equals(that.graph) : that.graph != null) return false;
+        if (meta != null ? !meta.equals(that.meta) : that.meta != null) return false;
+        return edge != null ? edge.equals(that.edge) : that.edge == null;
     }
 
     @Override
     public int hashCode() {
         int result = graph != null ? graph.hashCode() : 0;
+        result = 31 * result + (meta != null ? meta.hashCode() : 0);
         result = 31 * result + (edge != null ? edge.hashCode() : 0);
         return result;
     }

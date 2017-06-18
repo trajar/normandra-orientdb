@@ -194,7 +194,6 @@
 
 package org.normandra.orientdb.graph;
 
-import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.tinkerpop.blueprints.Direction;
 import org.apache.commons.lang.NullArgumentException;
 import org.apache.commons.lang.StringUtils;
@@ -206,6 +205,7 @@ import org.normandra.data.StaticEntityReference;
 import org.normandra.graph.Edge;
 import org.normandra.graph.Node;
 import org.normandra.meta.EntityMeta;
+import org.normandra.orientdb.data.OrientUtils;
 import org.normandra.property.PropertyModel;
 import org.normandra.util.ArraySet;
 import org.normandra.util.EntityPersistence;
@@ -224,11 +224,17 @@ import java.util.stream.Collectors;
 public class OrientNode<T> implements Node<T> {
     private final OrientGraph graph;
 
+    private final EntityMeta meta;
+
     private final com.tinkerpop.blueprints.impls.orient.OrientVertex vertex;
 
     private EntityReference<T> data;
 
-    public OrientNode(final OrientGraph graph, final com.tinkerpop.blueprints.impls.orient.OrientVertex vertex, final EntityReference<T> ref) {
+    public OrientNode(
+            final OrientGraph graph,
+            final com.tinkerpop.blueprints.impls.orient.OrientVertex vertex,
+            final EntityMeta meta,
+            final EntityReference<T> ref) {
         if (null == graph) {
             throw new NullArgumentException("graph");
         }
@@ -240,10 +246,11 @@ public class OrientNode<T> implements Node<T> {
         }
         this.graph = graph;
         this.vertex = vertex;
+        this.meta = meta;
         this.data = ref;
     }
 
-    public com.tinkerpop.blueprints.impls.orient.OrientVertex api() {
+    public com.tinkerpop.blueprints.impls.orient.OrientVertex element() {
         return this.vertex;
     }
 
@@ -255,6 +262,9 @@ public class OrientNode<T> implements Node<T> {
         } catch (final Exception e) {
             throw new NormandraException("Unable to remove vertex [" + this.vertex + "].", e);
         }
+
+        final Object key = OrientUtils.unpackKey(this.meta, this.vertex.getRecord());
+        this.graph.cache().remove(this.meta, key);
     }
 
     @Override
@@ -290,31 +300,35 @@ public class OrientNode<T> implements Node<T> {
             return null;
         }
 
+        final EntityMeta meta = this.graph.getMeta().getEdgeMeta(entity.getClass());
+        if (null == meta) {
+            return null;
+        }
+
+        final Object key = meta.getId().fromEntity(entity);
+        if (this.graph.exists(meta, key)) {
+            throw new NormandraException("Edge already exists.");
+        }
+
+        final com.tinkerpop.blueprints.impls.orient.OrientEdge edge;
         try (final Transaction tx = this.graph.beginTransaction()) {
-            final EntityMeta meta = this.graph.getMeta().getEdgeMeta(entity.getClass());
-            if (null == meta) {
-                return null;
-            }
             final String schemaName = meta.getTable();
-            final com.tinkerpop.blueprints.impls.orient.OrientVertex otherNode = ((OrientNode) node).api();
-            final com.tinkerpop.blueprints.impls.orient.OrientEdge edge = this.vertex.addEdge(schemaName, otherNode, schemaName);
+            final com.tinkerpop.blueprints.impls.orient.OrientVertex otherNode = ((OrientNode) node).element();
+            edge = this.vertex.addEdge(schemaName, otherNode, schemaName);
             if (null == edge) {
                 return null;
             }
 
-            final ODocument document = edge.getRecord();
-            final PropertyModel model = this.graph.buildModel(meta, document);
+            final PropertyModel model = this.graph.buildModel(meta, edge);
             final GraphDataHandler handler = new GraphDataHandler(model);
             new EntityPersistence(this.graph).save(meta, entity, handler);
-
             tx.success();
-
-            final Object key = meta.getId().fromEntity(entity);
-            final EntityReference<E> reference = new StaticEntityReference<>(entity);
-            return this.graph.buildEdge(meta, key, edge, reference);
         } catch (final Exception e) {
             throw new NormandraException("Unable to add edge [" + entity + "].", e);
         }
+
+        final EntityReference<E> reference = new StaticEntityReference<>(entity);
+        return this.graph.buildEdge(meta, key, edge, reference);
     }
 
     @Override
@@ -339,7 +353,7 @@ public class OrientNode<T> implements Node<T> {
     public Iterable<Node> getNeighbors() throws NormandraException {
         try (final Transaction tx = this.graph.beginTransaction()) {
             final Set<Node> neighbors = new ArraySet<>();
-            for (final Node node : this.graph.queryVertices("select expand(both()) from " + this.api().getId())) {
+            for (final Node node : this.graph.queryVertices("select expand(both()) from " + this.element().getId())) {
                 if (!this.equals(node)) {
                     neighbors.add(node);
                 }
@@ -360,9 +374,9 @@ public class OrientNode<T> implements Node<T> {
             final String query;
             if (nodeMeta != null) {
                 final String type = "'" + nodeMeta.getTable() + "'";
-                query = "select expand(unionall(outE(" + label + ").inV()[@class = " + type + "], inE(" + label + ").outV()[@class = " + type + "])) from " + this.api().getId();
+                query = "select expand(unionall(outE(" + label + ").inV()[@class = " + type + "], inE(" + label + ").outV()[@class = " + type + "])) from " + this.element().getId();
             } else {
-                query = "select expand(unionall(outE(" + label + ").inV(), inE(" + label + ").outV())) from " + this.api().getId();
+                query = "select expand(unionall(outE(" + label + ").inV(), inE(" + label + ").outV())) from " + this.element().getId();
             }
             final Set<Node> neighbors = new ArraySet<>();
             for (final Node node : this.graph.queryVertices(query)) {
@@ -380,7 +394,7 @@ public class OrientNode<T> implements Node<T> {
     public Iterable<Node> expand(final int depth) throws NormandraException {
         try (final Transaction tx = this.graph.beginTransaction()) {
             final Set<Node> nodes = new HashSet<>();
-            for (final Node node : this.graph.queryVertices("traverse both() from " + this.api().getId() + " maxdepth " + depth)) {
+            for (final Node node : this.graph.queryVertices("traverse both() from " + this.element().getId() + " maxdepth " + depth)) {
                 if (!this.equals(node)) {
                     nodes.add(node);
                 }
@@ -421,7 +435,7 @@ public class OrientNode<T> implements Node<T> {
             final List<String> quotedTypes = nodeTypes.stream().map((x) -> "'" + x + "'").collect(Collectors.toList());
             final String typeList = StringUtils.join(quotedTypes, ",");
             final Set<Node> nodes = new HashSet<>();
-            for (final Node node : this.graph.queryVertices("traverse both(" + typeList + ") from " + this.api().getId() + " maxdepth " + depth)) {
+            for (final Node node : this.graph.queryVertices("traverse both(" + typeList + ") from " + this.element().getId() + " maxdepth " + depth)) {
                 if (!this.equals(node)) {
                     nodes.add(node);
                 }
@@ -435,7 +449,7 @@ public class OrientNode<T> implements Node<T> {
     @Override
     public Iterable<Edge> getEdges() throws NormandraException {
         try (final Transaction tx = this.graph.beginTransaction()) {
-            return this.graph.queryEdges("select expand(bothE()) from " + this.api().getId());
+            return this.graph.queryEdges("select expand(bothE()) from " + this.element().getId());
         } catch (final Exception e) {
             throw new NormandraException("Unable to get edges for [" + this + "].", e);
         }
@@ -494,7 +508,7 @@ public class OrientNode<T> implements Node<T> {
         }
 
         try (final Transaction tx = this.graph.beginTransaction()) {
-            return this.graph.queryEdges("select expand(bothE(" + StringUtils.join(filtered, ",") + ")) from " + this.api().getId());
+            return this.graph.queryEdges("select expand(bothE(" + StringUtils.join(filtered, ",") + ")) from " + this.element().getId());
         } catch (final Exception e) {
             throw new NormandraException("Unable to get edges of [" + this + "] by labels " + set + ".", e);
         }
@@ -511,7 +525,7 @@ public class OrientNode<T> implements Node<T> {
 
         try (final Transaction tx = this.graph.beginTransaction()) {
             // update model
-            final PropertyModel model = this.graph.buildModel(meta, this.vertex.getRecord());
+            final PropertyModel model = this.graph.buildModel(meta, this.vertex);
             final GraphDataHandler handler = new GraphDataHandler(model);
             new EntityPersistence(this.graph).save(meta, instance, handler);
             tx.success();
@@ -520,7 +534,9 @@ public class OrientNode<T> implements Node<T> {
         }
 
         // update instance
+        final Object key = meta.getId().fromEntity(instance);
         this.data = new StaticEntityReference<>(instance);
+        this.graph.cache().put(meta, key, this);
     }
 
     @Override
@@ -530,28 +546,20 @@ public class OrientNode<T> implements Node<T> {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
 
-        OrientNode that = (OrientNode) o;
+        OrientNode<?> that = (OrientNode<?>) o;
 
-        if (graph != null ? !graph.equals(that.graph) : that.graph != null) {
-            return false;
-        }
-        if (vertex != null ? !vertex.equals(that.vertex) : that.vertex != null) {
-            return false;
-        }
-
-        return true;
+        if (graph != null ? !graph.equals(that.graph) : that.graph != null) return false;
+        if (meta != null ? !meta.equals(that.meta) : that.meta != null) return false;
+        return vertex != null ? vertex.equals(that.vertex) : that.vertex == null;
     }
 
     @Override
     public int hashCode() {
         int result = graph != null ? graph.hashCode() : 0;
+        result = 31 * result + (meta != null ? meta.hashCode() : 0);
         result = 31 * result + (vertex != null ? vertex.hashCode() : 0);
         return result;
     }
