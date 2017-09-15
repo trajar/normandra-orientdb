@@ -7,7 +7,7 @@
 
     <groupId>org.normandra</groupId>
     <artifactId>normandra-orientdb</artifactId>
-    <version>1.13</version>
+    <version>1.14</version>
     <packaging>bundle</packaging>
 
     <properties>
@@ -123,10 +123,9 @@
                             javassist.*; version="[3.19, 4.0)",
                             org.apache.commons.lang.*; version="[2.0, 3.0)",
                             org.apache.commons.lang3.*; version="[3.0, 4.0)",
-                            org.apache.logging.log4j.*; version="[2.8, 2.9)"; resolution:="optional",
+                            org.apache.logging.log4j.*; version="[2.0, 3.0)"; resolution:="optional",
                             org.codehaus.jackson.*; version="[1.9, 2.0)"; resolution:="optional",
                             org.osgi.*,
-                            org.apache.logging.log4j.*; version="[2.0, 3.0)",
                             org.slf4j.*; version="[1.7, 1.8)",
                             *; resolution:="optional"
                         </Import-Package>
