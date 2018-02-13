@@ -245,6 +245,9 @@ public class OrientNonBlockingEdgeQuery implements Iterable<Edge> {
             @Override
             public Edge next() {
                 final OrientElement element = itr.next();
+                if (null == element) {
+                    return null;
+                }
                 if (element instanceof OrientEdge) {
                     final OrientEdge e = (OrientEdge) element;
                     final String type = e.getLabel();
@@ -255,9 +258,8 @@ public class OrientNonBlockingEdgeQuery implements Iterable<Edge> {
                     final Object key = OrientUtils.unpackKey(meta, e.getRecord());
                     final EntityReference data = new OrientEntityReference<>(graph, meta, e.getRecord());
                     return graph.buildEdge(meta, key, e, data);
-                } else {
-                    return null;
                 }
+                throw new IllegalStateException("Unknown element type [" + element.getClass() + "].");
             }
         };
     }

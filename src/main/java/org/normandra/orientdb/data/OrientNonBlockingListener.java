@@ -382,7 +382,7 @@ public class OrientNonBlockingListener implements OCommandResultListener, Iterat
             }
         }
 
-        return null;
+        throw new IllegalStateException("Unknown document type [" + item.getClass() + "].");
     }
 
     private static class EndOfServiceElement {

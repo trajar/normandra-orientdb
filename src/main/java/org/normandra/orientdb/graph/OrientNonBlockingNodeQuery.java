@@ -245,6 +245,9 @@ public class OrientNonBlockingNodeQuery implements Iterable<Node> {
             @Override
             public Node next() {
                 final OrientElement element = itr.next();
+                if (null == element) {
+                    return null;
+                }
                 if (element instanceof OrientVertex) {
                     final OrientVertex v = (OrientVertex) element;
                     final String type = v.getLabel();
@@ -255,9 +258,8 @@ public class OrientNonBlockingNodeQuery implements Iterable<Node> {
                     final Object key = OrientUtils.unpackKey(meta, v.getRecord());
                     final EntityReference data = new OrientEntityReference<>(graph, meta, v.getRecord());
                     return graph.buildNode(meta, key, v, data);
-                } else {
-                    return null;
                 }
+                throw new IllegalStateException("Unknown element type [" + element.getClass() + "].");
             }
         };
     }
