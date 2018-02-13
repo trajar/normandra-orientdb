@@ -194,10 +194,11 @@
 
 package org.normandra.orientdb.data;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.index.OIndex;
+import com.orientechnologies.orient.core.record.OElement;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import com.orientechnologies.orient.core.tx.OTransaction;
@@ -227,11 +228,11 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 
     protected final EntityCache cache;
 
-    protected final ODatabaseDocumentTx database;
+    protected final ODatabaseDocument database;
 
     protected final Map<String, OrientQuery> statementsByName;
 
-    public OrientDatabaseSession(final ODatabaseDocumentTx db, final Map<String, OrientQuery> statements, final EntityCache cache) {
+    public OrientDatabaseSession(final ODatabaseDocument db, final Map<String, OrientQuery> statements, final EntityCache cache) {
         if (null == db) {
             throw new NullArgumentException("document database");
         }
@@ -266,7 +267,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
     }
 
     @Override
-    public void beginWork() throws NormandraException {
+    public void beginWork() {
         if (logger.isDebugEnabled()) {
             if (this.pendingWork()) {
                 logger.debug("Beginning transaction, but already in pending-work state.");
@@ -276,7 +277,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
     }
 
     @Override
-    public void commitWork() throws NormandraException {
+    public void commitWork() {
         if (logger.isDebugEnabled()) {
             if (!this.pendingWork()) {
                 logger.debug("Committing transaction, but not in pending-work state.");
@@ -286,7 +287,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
     }
 
     @Override
-    public void rollbackWork() throws NormandraException {
+    public void rollbackWork() {
         if (logger.isDebugEnabled()) {
             if (!this.pendingWork()) {
                 logger.debug("Rolling back transaction, but not in pending-work state.");
@@ -369,10 +370,11 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
             } else {
                 synchronizedQuery = new OrientNonBlockingDocumentQuery(this.database, queryOrName, Collections.emptyList());
             }
-            final Iterator<ODocument> itr = synchronizedQuery.execute();
+            final Iterator<OElement> itr = synchronizedQuery.execute();
             while (itr.hasNext()) {
-                final ODocument document = itr.next();
-                if (document != null) {
+                final OElement element = itr.next();
+                if (element instanceof ODocument) {
+                    final ODocument document = (ODocument) element;
                     final Object[] values = document.fieldValues();
                     if (values != null && values.length > 0) {
                         return values[0];
@@ -385,12 +387,12 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         }
     }
 
-    private DatabaseQuery executeNamedQuery(final EntityMeta meta, final OrientQuery query, final Map<String, Object> params) throws NormandraException {
+    private DatabaseQuery executeNamedQuery(final EntityMeta meta, final OrientQuery query, final Map<String, Object> params) {
         final OrientNonBlockingDocumentQuery activity = new OrientNonBlockingDocumentQuery(this.database, query.getQuery(), params);
         return new OrientDatabaseQuery(this, meta, activity);
     }
 
-    private DatabaseQuery executeDynamicQuery(final EntityMeta meta, final String query, final Map<String, Object> params) throws NormandraException {
+    private DatabaseQuery executeDynamicQuery(final EntityMeta meta, final String query, final Map<String, Object> params) {
         final OrientNonBlockingDocumentQuery activity = new OrientNonBlockingDocumentQuery(this.database, query, params);
         return new OrientDatabaseQuery(this, meta, activity);
     }
@@ -531,7 +533,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         return Collections.unmodifiableList(result);
     }
 
-    public final ODatabaseDocumentTx database() {
+    public final ODatabaseDocument database() {
         return this.database;
     }
 

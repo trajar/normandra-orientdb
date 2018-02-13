@@ -211,74 +211,59 @@ import java.util.Map;
  * <p>
  * Date: 6/4/14
  */
-public class OrientDataHandler implements DataHandler
-{
+public class OrientDataHandler implements DataHandler {
     private final OrientDatabaseSession session;
 
     private final List<ODocument> documents = new ArrayList<>();
 
-    OrientDataHandler(OrientDatabaseSession session)
-    {
+    OrientDataHandler(OrientDatabaseSession session) {
         this.session = session;
     }
 
     @Override
-    public boolean save(final EntityMeta entity, final Map<ColumnMeta, Object> data)
-    {
+    public boolean save(final EntityMeta entity, final Map<ColumnMeta, Object> data) {
         final Map<ColumnMeta, Object> keymap = new LinkedHashMap<>();
-        for (final ColumnMeta column : entity.getPrimaryKeys())
-        {
+        for (final ColumnMeta column : entity.getPrimaryKeys()) {
             final Object value = data.get(column);
-            if (value != null)
-            {
+            if (value != null) {
                 keymap.put(column, value);
             }
         }
 
         ODocument document = null;
         final OIdentifiable existing = this.session.findIdByMap(entity, keymap);
-        if (existing != null)
-        {
+        if (existing != null) {
             document = this.session.findDocument(existing);
-        }
-        else if (!keymap.isEmpty())
-        {
+        } else if (!keymap.isEmpty()) {
             final String schemaName = entity.getTable();
             document = this.session.database().newInstance(schemaName);
         }
 
-        if (null == document)
-        {
+        if (null == document) {
             return false;
         }
 
-        if (data.isEmpty() || keymap.isEmpty())
-        {
+        if (data.isEmpty() || keymap.isEmpty()) {
             this.documents.remove(document);
             document.delete();
             return true;
         }
 
-        for (final Map.Entry<ColumnMeta, Object> entry : data.entrySet())
-        {
+        for (final Map.Entry<ColumnMeta, Object> entry : data.entrySet()) {
             final ColumnMeta column = entry.getKey();
             final String name = column.getName();
             final Object value = entry.getValue();
-            if (value != null)
-            {
+            if (value != null) {
                 final OType type = OrientUtils.columnType(column);
                 final Object packed = OrientUtils.packValue(column, value);
                 document.field(name, packed, type);
-            }
-            else
-            {
+            } else {
                 document.removeField(name);
             }
         }
 
         final ODocument saved = document.save();
-        if (null == saved)
-        {
+        if (null == saved) {
             return false;
         }
 

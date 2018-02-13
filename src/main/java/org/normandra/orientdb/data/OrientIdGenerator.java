@@ -195,7 +195,6 @@
 package org.normandra.orientdb.data;
 
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.index.OIndex;
@@ -211,8 +210,7 @@ import org.normandra.meta.EntityMeta;
  * <p>
  * Date: 1/26/14
  */
-public class OrientIdGenerator implements IdGenerator
-{
+public class OrientIdGenerator implements IdGenerator {
     private static final Object lock = new Object();
 
     private final String tableName;
@@ -227,8 +225,7 @@ public class OrientIdGenerator implements IdGenerator
 
     private final OrientDatabase database;
 
-    protected OrientIdGenerator(final String table, final String index, final String keyCol, final String valueCol, final String key, final OrientDatabase database)
-    {
+    protected OrientIdGenerator(final String table, final String index, final String keyCol, final String valueCol, final String key, final OrientDatabase database) {
         this.tableName = table;
         this.indexName = index;
         this.keyColumn = keyCol;
@@ -238,50 +235,36 @@ public class OrientIdGenerator implements IdGenerator
     }
 
     @Override
-    public Long generate(final EntitySession session, final EntityMeta entity) throws NormandraException
-    {
-        if (null == session)
-        {
+    public Long generate(final EntitySession session, final EntityMeta entity) throws NormandraException {
+        if (null == session) {
             return null;
         }
-        if (null == entity)
-        {
+        if (null == entity) {
             return null;
         }
 
-        synchronized (lock)
-        {
-            try
-            {
-                if (session instanceof OrientDatabaseSession)
-                {
-                    final ODatabaseDocumentTx db = ((OrientDatabaseSession) session).database();
+        synchronized (lock) {
+            try {
+                if (session instanceof OrientDatabaseSession) {
+                    final ODatabaseDocument db = ((OrientDatabaseSession) session).database();
                     return this.generateWithDatabase(db, entity);
-                }
-                else
-                {
-                    try (final ODatabaseDocumentTx db = this.database.createDatabase())
-                    {
+                } else {
+                    try (final ODatabaseDocument db = this.database.createDatabase()) {
                         return this.generateWithDatabase(db, entity);
                     }
                 }
-            }
-            catch (final Exception e)
-            {
+            } catch (final Exception e) {
                 throw new NormandraException("Unable to increment counter id [" + this.keyValue + "] from table [" + this.tableName + "].", e);
             }
         }
     }
 
-    private Long generateWithDatabase(final ODatabaseDocument db, final EntityMeta entity)
-    {
+    private Long generateWithDatabase(final ODatabaseDocument db, final EntityMeta entity) {
         // try to update counter a fixed number of times
         db.begin();
-        for (int i = 0; i < 10; i++)
-        {
+        for (int i = 0; i < 10; i++) {
             final Long value = this.incrementCounter(db);
-            if (value != null)
-            {
+            if (value != null) {
                 db.commit();
                 return value;
             }
@@ -291,23 +274,18 @@ public class OrientIdGenerator implements IdGenerator
         throw new IllegalStateException("Unable to generate counter id.");
     }
 
-    private Long incrementCounter(final ODatabaseDocument dbtx)
-    {
+    private Long incrementCounter(final ODatabaseDocument dbtx) {
         ODocument document = this.findDocument(dbtx);
-        if (null == document)
-        {
+        if (null == document) {
             document = dbtx.newInstance(this.tableName);
             document.field(this.keyColumn, this.keyValue);
         }
 
         final Long current = document.field(this.valueColumn);
         final Long next;
-        if (null == current)
-        {
+        if (null == current) {
             next = 1L;
-        }
-        else
-        {
+        } else {
             next = current.longValue() + 1;
         }
         document.field(this.valueColumn, next);
@@ -316,29 +294,24 @@ public class OrientIdGenerator implements IdGenerator
         return next;
     }
 
-    private ODocument findDocument(final ODatabaseDocument dbtx)
-    {
+    private ODocument findDocument(final ODatabaseDocument dbtx) {
         final OIndex keyIdx = dbtx.getMetadata().getIndexManager().getClassIndex(this.tableName, this.indexName);
-        if (null == keyIdx)
-        {
+        if (null == keyIdx) {
             throw new IllegalStateException("Unable to locate orientdb index [" + this.indexName + "].");
         }
 
         final OIdentifiable guid = (OIdentifiable) keyIdx.get(this.keyValue);
-        if (null == guid)
-        {
+        if (null == guid) {
             return null;
         }
 
         final ORID rid = guid.getIdentity();
-        if (null == rid)
-        {
+        if (null == rid) {
             return null;
         }
 
         final ODocument document = dbtx.load(rid);
-        if (null == document)
-        {
+        if (null == document) {
             throw new IllegalStateException("Unable to load orientdb record id [" + rid + "].");
         }
         return document;

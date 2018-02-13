@@ -194,30 +194,26 @@
 
 package org.normandra.orientdb.data;
 
-import com.orientechnologies.orient.core.db.OPartitionedDatabasePool;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.db.ODatabasePool;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 
 /**
  * fixed size orientdb connection pool
  */
-public class FixedOrientPool implements OrientPool
-{
-    private final OPartitionedDatabasePool pool;
+public class FixedOrientPool implements OrientPool {
+    private final ODatabasePool pool;
 
-    public FixedOrientPool(final String url, final String user, final String pwd)
-    {
-        this.pool = new OPartitionedDatabasePool(url, user, pwd, 64, 4);
+    public FixedOrientPool(final String url, final String database, final String user, final String pwd) {
+        this.pool = new ODatabasePool(url, database, user, pwd);
     }
 
     @Override
-    public ODatabaseDocumentTx acquire()
-    {
+    public ODatabaseDocument acquire() {
         return this.pool.acquire();
     }
 
     @Override
-    public void close()
-    {
+    public void close() {
         this.pool.close();
     }
 }

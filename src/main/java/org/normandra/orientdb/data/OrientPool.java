@@ -194,13 +194,12 @@
 
 package org.normandra.orientdb.data;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 
 /**
  * orient connection pool api
  */
-public interface OrientPool
-{
-    ODatabaseDocumentTx acquire();
+public interface OrientPool {
+    ODatabaseDocument acquire();
     void close();
 }

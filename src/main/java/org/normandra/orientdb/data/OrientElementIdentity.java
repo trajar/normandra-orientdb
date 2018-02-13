@@ -209,24 +209,19 @@ import java.util.List;
 /**
  * Date: 9/23/14
  */
-public class OrientElementIdentity<T> implements ElementIdentity<T>
-{
+public class OrientElementIdentity<T> implements ElementIdentity<T> {
     private final EntityMeta entity;
 
-    public OrientElementIdentity(final EntityMeta entity)
-    {
-        if (null == entity)
-        {
+    public OrientElementIdentity(final EntityMeta entity) {
+        if (null == entity) {
             throw new NullArgumentException("entity context");
         }
         this.entity = entity;
     }
 
     @Override
-    public ORID fromKey(final EntitySession session, final Object key) throws NormandraException
-    {
-        if (null == key)
-        {
+    public ORID fromKey(final EntitySession session, final Object key) throws NormandraException {
+        if (null == key) {
             return null;
         }
         final OrientDatabaseSession orientdb = (OrientDatabaseSession) session;
@@ -235,10 +230,8 @@ public class OrientElementIdentity<T> implements ElementIdentity<T>
     }
 
     @Override
-    public ORID fromEntity(final EntitySession session, final T value) throws NormandraException
-    {
-        if (null == value)
-        {
+    public ORID fromEntity(final EntitySession session, final T value) throws NormandraException {
+        if (null == value) {
             return null;
         }
         final Object key = this.entity.getId().fromEntity(value);
@@ -246,19 +239,15 @@ public class OrientElementIdentity<T> implements ElementIdentity<T>
     }
 
     @Override
-    public List<?> fromEntities(final EntitySession session, final T... values) throws NormandraException
-    {
-        if (null == values || values.length <= 0)
-        {
+    public List<?> fromEntities(final EntitySession session, final T... values) throws NormandraException {
+        if (null == values || values.length <= 0) {
             return Collections.emptyList();
         }
         final List<ORID> list = new ArrayList<>(values.length);
-        for (final Object value : values)
-        {
+        for (final Object value : values) {
             final Object key = this.entity.getId().fromEntity(value);
             final ORID rid = this.fromKey(session, key);
-            if (rid != null)
-            {
+            if (rid != null) {
                 list.add(rid);
             }
         }
@@ -266,14 +255,12 @@ public class OrientElementIdentity<T> implements ElementIdentity<T>
     }
 
     @Override
-    public T toEntity(final EntitySession session, final Object value) throws NormandraException
-    {
+    public T toEntity(final EntitySession session, final Object value) throws NormandraException {
         return (T) session.get(this.entity, value);
     }
 
     @Override
-    public List toEntities(final EntitySession session, final Object... values) throws NormandraException
-    {
+    public List toEntities(final EntitySession session, final Object... values) throws NormandraException {
         return session.get(this.entity, values);
     }
 }

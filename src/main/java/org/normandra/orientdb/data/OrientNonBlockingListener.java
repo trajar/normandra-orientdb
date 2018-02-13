@@ -198,8 +198,8 @@ import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.command.OCommandResultListener;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
+import com.orientechnologies.orient.core.record.OElement;
 import com.orientechnologies.orient.core.record.ORecord;
-import com.orientechnologies.orient.core.record.impl.ODocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -210,15 +210,14 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class OrientNonBlockingListener implements OCommandResultListener, Iterator<ODocument>, Closeable, AutoCloseable
-{
+public class OrientNonBlockingListener implements OCommandResultListener, Iterator<OElement>, Closeable, AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(OrientNonBlockingDocumentQuery.class);
 
     private final ODatabaseDocument database;
 
     private final BlockingQueue<Object> queue = new ArrayBlockingQueue<>(250);
 
-    private ODocument next = null;
+    private OElement next = null;
 
     private boolean done = false;
 
@@ -226,30 +225,22 @@ public class OrientNonBlockingListener implements OCommandResultListener, Iterat
 
     private boolean needsFetch = true;
 
-    public OrientNonBlockingListener(final ODatabaseDocument db)
-    {
+    public OrientNonBlockingListener(final ODatabaseDocument db) {
         this.database = db;
     }
 
     @Override
-    public boolean result(final Object record)
-    {
-        if (null == record)
-        {
+    public boolean result(final Object record) {
+        if (null == record) {
             return false;
         }
 
-        while (!isClosed() && !isDone())
-        {
-            try
-            {
-                if (queue.offer(record, 100, TimeUnit.MILLISECONDS))
-                {
+        while (!isClosed() && !isDone()) {
+            try {
+                if (queue.offer(record, 100, TimeUnit.MILLISECONDS)) {
                     return true;
                 }
-            }
-            catch (final InterruptedException e)
-            {
+            } catch (final InterruptedException e) {
                 logger.trace("Unable to offer document in non-blocking queue.", e);
             }
         }
@@ -258,98 +249,76 @@ public class OrientNonBlockingListener implements OCommandResultListener, Iterat
     }
 
     @Override
-    public void end()
-    {
+    public void end() {
         this.endService();
     }
 
     @Override
-    public Object getResult()
-    {
+    public Object getResult() {
         return null;
     }
 
-    private boolean endService()
-    {
-        synchronized (this)
-        {
+    private boolean endService() {
+        synchronized (this) {
             this.done = true;
         }
 
-        logger.trace("Adding end-of-service item to queue.");
-        for (int i = 0; i < 10; i++)
-        {
-            try
-            {
-                if (queue.offer(new EndOfServiceElement(), 500, TimeUnit.MILLISECONDS))
-                {
+        for (int i = 0; i < 10; i++) {
+            try {
+                if (queue.offer(new EndOfServiceElement(), 500, TimeUnit.MILLISECONDS)) {
                     return true;
                 }
-            }
-            catch (final InterruptedException e)
-            {
+            } catch (final InterruptedException e) {
                 logger.trace("Unable to offer document in non-blocking queue.", e);
             }
         }
 
-        logger.debug("Unable to add end-of-service item to queue.");
+        logger.trace("Unable to add end-of-service item to queue.");
         return false;
     }
 
-    public boolean isDone()
-    {
-        synchronized (this)
-        {
+    public boolean isDone() {
+        synchronized (this) {
             return this.done;
         }
     }
 
     @Override
-    public void close()
-    {
-        synchronized (this)
-        {
+    public void close() {
+        synchronized (this) {
             this.closed = true;
         }
 
         this.queue.clear();
     }
 
-    public boolean isClosed()
-    {
-        synchronized (this)
-        {
-            if (this.closed)
-            {
+    public boolean isClosed() {
+        synchronized (this) {
+            if (this.closed) {
                 return true;
             }
         }
 
-        if (this.checkForDatabaseClosed())
-        {
+        if (this.checkForDatabaseClosed()) {
             return true;
         }
 
         return false;
     }
 
-    private boolean checkForDatabaseClosed()
-    {
-        if (!this.database.isClosed())
-        {
+    private boolean checkForDatabaseClosed() {
+        if (!this.database.isClosed()) {
             return false;
         }
 
-        logger.debug("Database is closed so closing non-blocking listener.");
+        logger.trace("Database is closed so closing non-blocking listener.");
         this.close();
         return true;
     }
 
     @Override
-    public boolean hasNext()
-    {
-        if (this.needsFetch)
-        {
+    public boolean hasNext() {
+        if (this.needsFetch) {
             this.fetch();
         }
 
@@ -357,49 +326,35 @@ public class OrientNonBlockingListener implements OCommandResultListener, Iterat
     }
 
     @Override
-    public ODocument next()
-    {
-        if (this.needsFetch)
-        {
+    public OElement next() {
+        if (this.needsFetch) {
             this.fetch();
         }
 
-        final ODocument document = this.next;
+        final OElement document = this.next;
         this.next = null;
         this.needsFetch = true;
         return document;
     }
 
-    private boolean fetch()
-    {
-        while (!this.queue.isEmpty() || !(this.isClosed() || this.isDone()))
-        {
-            try
-            {
+    private boolean fetch() {
+        while (!this.queue.isEmpty() || !(this.isClosed() || this.isDone())) {
+            try {
                 final Object item = this.queue.poll(250, TimeUnit.MILLISECONDS);
-                if (item instanceof EndOfServiceElement)
-                {
-                    logger.trace("Found end-of-service item [" + ((EndOfServiceElement) item).guid + "].");
+                if (item instanceof EndOfServiceElement) {
                     this.next = null;
                     this.needsFetch = false;
                     return false;
-                }
-                else if (item != null)
-                {
+                } else if (item != null) {
                     this.next = this.buildDocument(item);
-                    if (this.next != null)
-                    {
+                    if (this.next != null) {
                         this.needsFetch = false;
                         return true;
                     }
                 }
-            }
-            catch (final InterruptedException e)
-            {
+            } catch (final InterruptedException e) {
                 logger.trace("Unable to poll non-blocking queue.", e);
-            }
-            catch (final Exception e)
-            {
+            } catch (final Exception e) {
                 logger.warn("Unable to build document from queue item.", e);
             }
         }
@@ -407,37 +362,30 @@ public class OrientNonBlockingListener implements OCommandResultListener, Iterat
         return false;
     }
 
-    private ODocument buildDocument(final Object item) throws OException
-    {
-        if (null == item)
-        {
+    private OElement buildDocument(final Object item) throws OException {
+        if (null == item) {
             return null;
         }
 
-        if (this.isClosed())
-        {
+        if (this.isClosed()) {
             return null;
         }
 
-        if (item instanceof ODocument)
-        {
-            return (ODocument) item;
+        if (item instanceof OElement) {
+            return (OElement) item;
         }
 
-        if (item instanceof OIdentifiable)
-        {
+        if (item instanceof OIdentifiable) {
             final ORecord record = this.database.getRecord((OIdentifiable) item);
-            if (record instanceof ODocument)
-            {
-                return (ODocument) record;
+            if (record instanceof OElement) {
+                return (OElement) record;
             }
         }
 
         return null;
     }
 
-    private static class EndOfServiceElement
-    {
+    private static class EndOfServiceElement {
         private final UUID guid = UUID.randomUUID();
     }
 }

@@ -194,27 +194,20 @@
 
 package org.normandra.orientdb.data;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.record.OElement;
 import com.orientechnologies.orient.core.sql.query.OSQLNonBlockingQuery;
 import org.apache.commons.lang.NullArgumentException;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * a orientdb database query activity
  * <p>
  * Date: 4/4/14
  */
-public class OrientNonBlockingDocumentQuery implements Iterable<ODocument>
-{
-    private final ODatabaseDocumentTx database;
+public class OrientNonBlockingDocumentQuery implements Iterable<OElement> {
+    private final ODatabaseDocument database;
 
     private final String query;
 
@@ -222,87 +215,55 @@ public class OrientNonBlockingDocumentQuery implements Iterable<ODocument>
 
     private final Map<String, Object> parameterMap;
 
-    public OrientNonBlockingDocumentQuery(final ODatabaseDocumentTx db, final String query, final Collection<?> params)
-    {
-        if (null == db)
-        {
+    public OrientNonBlockingDocumentQuery(final ODatabaseDocument db, final String query, final Collection<?> params) {
+        if (null == db) {
             throw new NullArgumentException("database");
         }
-        if (null == query)
-        {
+        if (null == query) {
             throw new NullArgumentException("query");
         }
         this.database = db;
         this.query = query;
         this.parameterMap = Collections.emptyMap();
-        if (params != null && !params.isEmpty())
-        {
+        if (params != null && !params.isEmpty()) {
             this.parameterList = new ArrayList<>(params);
-        }
-        else
-        {
+        } else {
             this.parameterList = Collections.emptyList();
         }
     }
 
-    public OrientNonBlockingDocumentQuery(final ODatabaseDocumentTx db, final String query, final Map<String, Object> params)
-    {
-        if (null == db)
-        {
+    public OrientNonBlockingDocumentQuery(final ODatabaseDocument db, final String query, final Map<String, Object> params) {
+        if (null == db) {
             throw new NullArgumentException("database");
         }
-        if (null == query)
-        {
+        if (null == query) {
             throw new NullArgumentException("query");
         }
         this.database = db;
         this.query = query;
         this.parameterList = Collections.emptyList();
-        if (params != null && !params.isEmpty())
-        {
+        if (params != null && !params.isEmpty()) {
             this.parameterMap = new LinkedHashMap<>(params);
-        }
-        else
-        {
+        } else {
             this.parameterMap = Collections.emptyMap();
         }
     }
 
-    public Iterator<ODocument> execute()
-    {
+    public Iterator<OElement> execute() {
         final OrientNonBlockingListener listener = new OrientNonBlockingListener(this.database);
         final OSQLNonBlockingQuery q = new OSQLNonBlockingQuery(this.query, listener);
-        if (!parameterList.isEmpty())
-        {
+        if (!parameterList.isEmpty()) {
             database.command(q).execute(parameterList.toArray());
-        }
-        else if (!parameterMap.isEmpty())
-        {
+        } else if (!parameterMap.isEmpty()) {
             database.command(q).execute(parameterMap);
-        }
-        else
-        {
+        } else {
             database.command(q).execute();
         }
         return listener;
     }
 
-    final int size()
-    {
-        int cnt = 0;
-        for (final Object item : this)
-        {
-            if (item != null)
-            {
-                cnt++;
-            }
-        }
-        return cnt;
-    }
-
     @Override
-    public Iterator<ODocument> iterator()
-    {
+    public Iterator<OElement> iterator() {
         return this.execute();
     }
 }

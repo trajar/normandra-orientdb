@@ -194,6 +194,7 @@
 
 package org.normandra.orientdb.data;
 
+import com.orientechnologies.orient.core.record.OElement;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import org.normandra.DatabaseQuery;
 import org.normandra.NormandraException;
@@ -209,8 +210,7 @@ import java.util.List;
  * <p>
  * Date: 6/9/14
  */
-public class OrientDatabaseQuery<T> implements DatabaseQuery<T>
-{
+public class OrientDatabaseQuery<T> implements DatabaseQuery<T> {
     private final OrientDatabaseSession session;
 
     private final EntityMeta meta;
@@ -219,25 +219,20 @@ public class OrientDatabaseQuery<T> implements DatabaseQuery<T>
 
     private T firstItem = null;
 
-    public OrientDatabaseQuery(final OrientDatabaseSession session, final EntityMeta meta, final OrientNonBlockingDocumentQuery query)
-    {
+    public OrientDatabaseQuery(final OrientDatabaseSession session, final EntityMeta meta, final OrientNonBlockingDocumentQuery query) {
         this.session = session;
         this.meta = meta;
         this.query = query;
     }
 
     @Override
-    public T first() throws NormandraException
-    {
-        if (this.firstItem != null)
-        {
+    public T first() throws NormandraException {
+        if (this.firstItem != null) {
             return this.firstItem;
         }
 
-        for (final T item : this)
-        {
-            if (item != null)
-            {
+        for (final T item : this) {
+            if (item != null) {
                 this.firstItem = item;
                 return item;
             }
@@ -247,13 +242,10 @@ public class OrientDatabaseQuery<T> implements DatabaseQuery<T>
     }
 
     @Override
-    public List<T> list() throws NormandraException
-    {
+    public List<T> list() throws NormandraException {
         final List<T> list = new ArrayList<>();
-        for (final T item : this)
-        {
-            if (item != null)
-            {
+        for (final T item : this) {
+            if (item != null) {
                 list.add(item);
             }
         }
@@ -261,37 +253,29 @@ public class OrientDatabaseQuery<T> implements DatabaseQuery<T>
     }
 
     @Override
-    public boolean empty() throws NormandraException
-    {
+    public boolean empty() throws NormandraException {
         return this.first() != null;
     }
 
     @Override
-    public Iterator<T> iterator()
-    {
-        final Iterator<ODocument> itr = this.query.iterator();
-        return new Iterator<T>()
-        {
+    public Iterator<T> iterator() {
+        final Iterator<OElement> itr = this.query.iterator();
+        return new Iterator<T>() {
             @Override
-            public boolean hasNext()
-            {
+            public boolean hasNext() {
                 return itr.hasNext();
             }
 
             @Override
-            public T next()
-            {
-                final ODocument doc = itr.next();
-                if (null == doc)
-                {
+            public T next() {
+                final OElement element = itr.next();
+                final ODocument doc = element != null ? element.getDatabase().getRecord(element) : null;
+                if (null == doc) {
                     return null;
                 }
-                try
-                {
+                try {
                     return session.build(meta, doc);
-                }
-                catch (final Exception e)
-                {
+                } catch (final Exception e) {
                     throw new IllegalStateException("Unable to get next entity [" + meta + "] from document [" + doc.getIdentity() + "].", e);
                 }
             }

@@ -208,8 +208,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>
  * Date: 4/5/14
  */
-public class OrientLazyDataHolder implements DataHolder
-{
+public class OrientLazyDataHolder implements DataHolder {
     private final AtomicBoolean loaded = new AtomicBoolean(false);
 
     private final OrientDatabaseSession session;
@@ -222,8 +221,7 @@ public class OrientLazyDataHolder implements DataHolder
 
     private ODocument document;
 
-    public OrientLazyDataHolder(final OrientDatabaseSession session, final EntityMeta meta, final ColumnMeta column, final Object key)
-    {
+    public OrientLazyDataHolder(final OrientDatabaseSession session, final EntityMeta meta, final ColumnMeta column, final Object key) {
         this.session = session;
         this.entity = meta;
         this.column = column;
@@ -231,50 +229,36 @@ public class OrientLazyDataHolder implements DataHolder
     }
 
     @Override
-    public boolean isEmpty()
-    {
-        try
-        {
+    public boolean isEmpty() {
+        try {
             return this.ensureResults().isEmpty();
-        }
-        catch (final Exception e)
-        {
+        } catch (final Exception e) {
             throw new IllegalStateException("Unable to query lazy loaded results from [" + this.entity + "] column [" + this.column + "].", e);
         }
     }
 
     @Override
-    public Object get() throws NormandraException
-    {
+    public Object get() throws NormandraException {
         final ODocument doc = this.ensureResults();
-        if (null == doc)
-        {
+        if (null == doc) {
             return null;
         }
-        try
-        {
+        try {
             return OrientUtils.unpackValue(doc, this.column);
-        }
-        catch (final Exception e)
-        {
+        } catch (final Exception e) {
             throw new NormandraException("Unable to toEntity lazy loaded results for column [" + this.column + "] on entity [" + this.entity + "].", e);
         }
     }
 
-    private ODocument ensureResults() throws NormandraException
-    {
-        if (this.loaded.get())
-        {
+    private ODocument ensureResults() throws NormandraException {
+        if (this.loaded.get()) {
             return this.document;
         }
-        try
-        {
+        try {
             final OIdentifiable record = new OrientElementIdentity(this.entity).fromKey(this.session, this.key);
             this.document = this.session.findDocument(record);
             this.loaded.getAndSet(true);
-        }
-        catch (final Exception e)
-        {
+        } catch (final Exception e) {
             throw new NormandraException("Unable to get orientdb document by key [" + this.key + "].", e);
         }
         return this.document;

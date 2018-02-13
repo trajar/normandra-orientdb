@@ -194,15 +194,11 @@
 
 package org.normandra.orientdb.data;
 
-import com.orientechnologies.orient.core.db.ODatabase;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.index.OIndex;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OProperty;
 import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.orientechnologies.orient.core.sql.OCommandSQL;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.NullArgumentException;
 import org.apache.commons.lang3.StringUtils;
@@ -236,21 +232,23 @@ public class OrientDatabase implements Database {
     protected static final ColumnAccessorFactory columnFactory = new OrientAccessorFactory();
 
     public static boolean isLocal(final String url) {
-        if (null == url) {
+        if (null == url || url.isEmpty()) {
             return false;
         }
-        return url.toLowerCase().startsWith("plocal:") || url.toLowerCase().startsWith("local:");
+        return url.toLowerCase().startsWith("embedded:") ||
+                url.toLowerCase().startsWith("plocal:") ||
+                url.toLowerCase().startsWith("local:");
     }
 
     public static OrientDatabase create(
-            final String url, final String userid, final String password,
+            final String url, final String database, final String userid, final String password,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final Collection<Class> types) {
         final OrientPool pool;
         if (isLocal(url)) {
-            pool = new LocalOrientPool(url, userid, password);
+            pool = new LocalOrientPool(url, database, userid, password);
         } else {
-            pool = new FixedOrientPool(url, userid, password);
+            pool = new FixedOrientPool(url, database, userid, password);
         }
         final AnnotationParser parser = new AnnotationParser(columnFactory, types);
         final DatabaseMeta meta = new DatabaseMeta(parser.read());
@@ -258,33 +256,33 @@ public class OrientDatabase implements Database {
     }
 
     public static OrientDatabase create(
-            final String url, final String userid, final String password,
+            final String url, final String database, final String userid, final String password,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final DatabaseMetaBuilder metaBuilder) {
         final OrientPool pool;
         if (isLocal(url)) {
-            pool = new LocalOrientPool(url, userid, password);
+            pool = new LocalOrientPool(url, database, userid, password);
         } else {
-            pool = new FixedOrientPool(url, userid, password);
+            pool = new FixedOrientPool(url, database, userid, password);
         }
         final DatabaseMeta meta = metaBuilder.withColumnFactory(columnFactory).create();
         return new OrientDatabase(url, pool, factory, mode, meta);
     }
 
     public static OrientDatabase create(
-            final File path,
+            final File path, final String database,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final Collection<Class> types) {
         final String url = "plocal:" + FilenameUtils.normalize(path.getAbsolutePath());
-        return create(url, "admin", "admin", factory, mode, types);
+        return create(url, database, "admin", "admin", factory, mode, types);
     }
 
     public static OrientDatabase create(
-            final File path,
+            final File path, final String database,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final DatabaseMetaBuilder metaBuilder) {
         final String url = "plocal:" + FilenameUtils.normalize(path.getAbsolutePath());
-        return create(url, "admin", "admin", factory, mode, metaBuilder);
+        return create(url, database, "admin", "admin", factory, mode, metaBuilder);
     }
 
     protected final String url;
@@ -320,12 +318,8 @@ public class OrientDatabase implements Database {
         return this.meta;
     }
 
-    final ODatabaseDocumentTx createDatabase() {
+    final ODatabaseDocument createDatabase() {
         return this.pool.acquire();
-    }
-
-    public boolean isLocal() {
-        return this.url.toLowerCase().startsWith("plocal:") || this.url.toLowerCase().startsWith("local:");
     }
 
     @Override
@@ -339,26 +333,8 @@ public class OrientDatabase implements Database {
             return;
         }
 
-        if (this.isLocal()) {
-            // initialize directory structure as necessary
-            final int index = this.url.indexOf(":");
-            final File path = new File(this.url.substring(index + 1));
-            try {
-                if (!path.exists()) {
-                    FileUtils.forceMkdir(path);
-                }
-                if (path.list() == null || path.list().length <= 0) {
-                    try (final ODatabase db = new ODatabaseDocumentTx(this.url, false)) {
-                        db.create();
-                    }
-                }
-            } catch (final Exception e) {
-                throw new NormandraException("Unable to create local directory structure.", e);
-            }
-        }
-
         // setup entity schema
-        try (final ODatabaseDocumentTx database = this.createDatabase()) {
+        try (final ODatabaseDocument database = this.createDatabase()) {
             for (final EntityMeta entity : this.meta.getEntities()) {
                 this.refreshEntityWithTransaction(entity, database);
                 this.refreshGenerators(entity, database);
@@ -368,7 +344,7 @@ public class OrientDatabase implements Database {
         }
     }
 
-    private void refreshGenerators(final EntityMeta entity, final ODatabaseDocumentTx database) {
+    private void refreshGenerators(final EntityMeta entity, final ODatabaseDocument database) {
         // setup any table sequence/id generators
         for (final Class<?> entityType : entity.getTypes()) {
             final AnnotationParser parser = new AnnotationParser(new OrientAccessorFactory(), entityType);
@@ -421,11 +397,11 @@ public class OrientDatabase implements Database {
                 // drop table as required
                 if (DatabaseConstruction.RECREATE.equals(this.constructionMode)) {
                     if (hasCluster(database, tableName)) {
-                        database.command(new OCommandSQL("DELETE FROM " + tableName)).execute();
+                        database.command("DELETE FROM " + tableName);
                         database.getMetadata().getSchema().dropClass(tableName);
                     }
                     if (hasIndex(database, indexName)) {
-                        database.command(new OCommandSQL("DROP INDEX " + indexName)).execute();
+                        database.command("DROP INDEX " + indexName);
                         database.getMetadata().getIndexManager().dropIndex(indexName);
                     }
                 }
@@ -446,22 +422,21 @@ public class OrientDatabase implements Database {
                 final IdGenerator counter = new OrientIdGenerator(tableName, indexName, keyColumn, valueColumn, keyValue, this);
                 entity.setGenerator(column, counter);
                 logger.info("Set counter id generator for [" + column + "] on entity [" + entity + "].");
-                break;
             }
         }
     }
 
-    private void refreshEntityWithTransaction(final EntityMeta entity, final ODatabaseDocumentTx database) {
+    private void refreshEntityWithTransaction(final EntityMeta entity, final ODatabaseDocument database) {
         final String keyIndex = OrientUtils.keyIndex(entity);
         final String schemaName = entity.getTable();
 
         if (DatabaseConstruction.RECREATE.equals(this.constructionMode)) {
             // drop schema
             if (hasClass(database, schemaName)) {
-                database.command(new OCommandSQL("DELETE FROM " + schemaName + " UNSAFE")).execute();
+                database.command("DELETE FROM " + schemaName + " UNSAFE");
             }
             if (hasIndex(database, keyIndex)) {
-                database.command(new OCommandSQL("DROP INDEX " + keyIndex)).execute();
+                database.command("DROP INDEX " + keyIndex);
             }
             for (final IndexMeta index : entity.getIndexed()) {
                 final String indexName;
@@ -472,7 +447,7 @@ public class OrientDatabase implements Database {
                     indexName = schemaName + "." + index.getName();
                 }
                 if (hasIndex(database, indexName)) {
-                    database.command(new OCommandSQL("DROP INDEX " + indexName)).execute();
+                    database.command("DROP INDEX " + indexName);
                 }
             }
         }
@@ -498,7 +473,7 @@ public class OrientDatabase implements Database {
                     .map(ColumnMeta::getName)
                     .collect(Collectors.toList());
             if (!names.isEmpty()) {
-                database.command(new OCommandSQL("CREATE INDEX " + keyIndex + " ON " + schemaName + " (" + StringUtils.join(names, ",") + ") UNIQUE")).execute();
+                database.command("CREATE INDEX " + keyIndex + " ON " + schemaName + " (" + StringUtils.join(names, ",") + ") UNIQUE");
             }
         }
         for (final IndexMeta index : entity.getIndexed()) {
@@ -507,13 +482,13 @@ public class OrientDatabase implements Database {
                 final ColumnMeta column = index.getColumns().iterator().next();
                 final String indexName = schemaName + "." + column.getName();
                 if (!hasIndex(database, indexName)) {
-                    database.command(new OCommandSQL("CREATE INDEX " + indexName + " " + uniqueness)).execute();
+                    database.command("CREATE INDEX " + indexName + " " + uniqueness);
                 }
             } else {
                 final Collection<String> names = index.getColumns().stream().map(ColumnMeta::getName).collect(Collectors.toList());
                 final String indexName = schemaName + "." + index.getName();
                 if (!names.isEmpty() && !hasIndex(database, indexName)) {
-                    database.command(new OCommandSQL("CREATE INDEX " + indexName + " ON " + schemaName + " (" + StringUtils.join(names, ",") + ") " + uniqueness)).execute();
+                    database.command("CREATE INDEX " + indexName + " ON " + schemaName + " (" + StringUtils.join(names, ",") + ") " + uniqueness);
                 }
             }
         }
@@ -542,7 +517,7 @@ public class OrientDatabase implements Database {
     }
 
     @Override
-    public boolean unregisterQuery(final String name) throws NormandraException {
+    public boolean unregisterQuery(final String name) {
         if (null == name || name.isEmpty()) {
             return false;
         }

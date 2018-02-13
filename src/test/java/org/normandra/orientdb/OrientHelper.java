@@ -218,6 +218,8 @@ public class OrientHelper implements TestHelper {
 
     private File dir = new File("target/orient-test");
 
+    private String databaseName = "test_me_db";
+
     @Override
     public Database getDatabase() {
         return database;
@@ -245,6 +247,20 @@ public class OrientHelper implements TestHelper {
     @Override
     public void create(DatabaseMetaBuilder builder) throws Exception {
         Orient.instance().startup();
+        ensurePaths();
+        database = OrientDatabase.create(dir, databaseName, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+        entityManager = new EntityManagerFactory(this.database, this.database.getMeta()).create();
+    }
+
+    @Override
+    public void create(GraphMetaBuilder builder) throws Exception {
+        Orient.instance().startup();
+        ensurePaths();
+        database = OrientGraphDatabase.create(dir, databaseName, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+        graphManager = new GraphManagerFactory((OrientGraphDatabase) this.database, (GraphMeta) this.database.getMeta()).create();
+    }
+
+    private void ensurePaths() {
         if (dir.exists()) {
             try {
                 FileUtils.deleteDirectory(dir);
@@ -252,23 +268,8 @@ public class OrientHelper implements TestHelper {
                 e.printStackTrace();
             }
         }
-        database = OrientDatabase.create(dir, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
-        entityManager = new EntityManagerFactory(this.database, this.database.getMeta()).create();
-    }
-
-    @Override
-    public void create(GraphMetaBuilder builder) throws Exception {
-        Orient.instance().startup();
-        File tmpdir = new File("target/orient-test");
-        if (tmpdir.exists()) {
-            try {
-                FileUtils.deleteDirectory(tmpdir);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        database = OrientGraphDatabase.create(tmpdir, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
-        graphManager = new GraphManagerFactory((OrientGraphDatabase) this.database, (GraphMeta) this.database.getMeta()).create();
+        dir.mkdirs();
+        new File(dir, databaseName).mkdirs();
     }
 
     @Override

@@ -195,7 +195,8 @@
 package org.normandra.orientdb.graph;
 
 import com.orientechnologies.orient.core.db.ODatabase;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.tinkerpop.blueprints.impls.orient.OrientEdgeType;
@@ -217,25 +218,25 @@ import java.io.File;
 
 public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase {
     public static OrientGraphDatabase create(
-            final String url, final String userid, final String password,
+            final String url, final String database, final String userid, final String password,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final GraphMetaBuilder metaBuilder) {
         final OrientPool pool;
         if (isLocal(url)) {
-            pool = new LocalOrientPool(url, userid, password);
+            pool = new LocalOrientPool(url, database, userid, password);
         } else {
-            pool = new FixedOrientPool(url, userid, password);
+            pool = new FixedOrientPool(url, database, userid, password);
         }
         final GraphMeta meta = metaBuilder.withColumnFactory(columnFactory).create();
         return new OrientGraphDatabase(url, pool, factory, mode, meta);
     }
 
     public static OrientGraphDatabase create(
-            final File path,
+            final File path, final String database,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final GraphMetaBuilder metaBuilder) {
         final String url = "plocal:" + FilenameUtils.normalize(path.getAbsolutePath());
-        return create(url, "admin", "admin", factory, mode, metaBuilder);
+        return create(url, database, "admin", "admin", factory, mode, metaBuilder);
     }
 
     private final GraphMeta meta;
@@ -252,10 +253,14 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
 
     @Override
     public OrientGraph createGraph() {
-        final ODatabaseDocumentTx db = this.pool.acquire();
+        final ODatabaseDocument db = this.pool.acquire();
+        if (!(db instanceof ODatabaseDocumentInternal)) {
+            throw new IllegalStateException("Expected database document internal type, but found [" + db.getClass() + "].");
+        }
+        final ODatabaseDocumentInternal internal = (ODatabaseDocumentInternal) db;
         final boolean autotx = "true".equalsIgnoreCase(System.getProperty("graph.autoStartTx", "false"));
         final boolean useLightweightEdges = "true".equalsIgnoreCase(System.getProperty("graph.useLightweightEdges", "false"));
-        final com.tinkerpop.blueprints.impls.orient.OrientGraph api = new com.tinkerpop.blueprints.impls.orient.OrientGraph(db, autotx);
+        final com.tinkerpop.blueprints.impls.orient.OrientGraph api = new com.tinkerpop.blueprints.impls.orient.OrientGraph(internal, autotx);
         api.setUseLightweightEdges(useLightweightEdges);
         return new OrientGraph(this.meta, api, this.statementsByName, this.cache.create());
     }
