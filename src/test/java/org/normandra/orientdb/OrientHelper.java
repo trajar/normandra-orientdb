@@ -208,8 +208,10 @@ import org.normandra.orientdb.data.OrientDatabase;
 import org.normandra.orientdb.graph.OrientGraphDatabase;
 
 import java.io.File;
+import java.util.UUID;
 
 public class OrientHelper implements TestHelper {
+
     private OrientDatabase database;
 
     private EntityManager entityManager;

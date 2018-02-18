@@ -47,6 +47,10 @@ public class LocalEmbeddedServer {
 
     private Thread shutdownHook = null;
 
+    public LocalEmbeddedServer(final File orientDir) {
+        this(orientDir, "root", rootPassword());
+    }
+
     public LocalEmbeddedServer(final File orientDir, final String serverUser, final String serverPwd) {
         this.orientDir = orientDir;
         this.serverUser = serverUser;
@@ -62,9 +66,13 @@ public class LocalEmbeddedServer {
         // spawn process
         final File bin = new File(this.orientDir, "bin").getCanonicalFile();
         final String ext = SystemUtils.IS_OS_WINDOWS ? ".bat" : ".sh";
-        this.activeProcess = new ProcessBuilder()
-                .command(new File(bin, "server" + ext).getCanonicalPath())
-                .start();
+        final String rootPwd = rootPassword();
+        ProcessBuilder builder = new ProcessBuilder()
+                .command(new File(bin, "server" + ext).getCanonicalPath());
+        if (rootPwd != null && !rootPwd.isEmpty()) {
+            builder.environment().put("ORIENTDB_ROOT_PASSWORD", rootPwd);
+        }
+        this.activeProcess = builder.start();
 
         // register shutdown
         this.shutdownHook = new Thread(() -> {
@@ -314,5 +322,14 @@ public class LocalEmbeddedServer {
             }
             return true;
         }
+    }
+
+    private static String rootPassword() {
+        // check for default root password for new/clean installations
+        final String envPwd = System.getenv("ORIENTDB_ROOT_PASSWORD");
+        if (envPwd != null && !envPwd.isEmpty()) {
+            return envPwd;
+        }
+        return System.getProperty("ORIENTDB_ROOT_PASSWORD");
     }
 }

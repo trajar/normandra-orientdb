@@ -7,6 +7,11 @@ import org.junit.Test;
 import java.io.File;
 
 public class LocalEmbeddedServerTest {
+
+    public LocalEmbeddedServerTest() {
+        System.setProperty("ORIENTDB_ROOT_PASSWORD", "admin");
+    }
+
     File orientDir = new File("src/test/resources/orientdb-sample");
 
     String serverUser = "root";
