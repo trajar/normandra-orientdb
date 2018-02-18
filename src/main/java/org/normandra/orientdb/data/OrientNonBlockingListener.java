@@ -199,7 +199,6 @@ import com.orientechnologies.orient.core.command.OCommandResultListener;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.record.OElement;
-import com.orientechnologies.orient.core.record.ORecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -376,10 +375,9 @@ public class OrientNonBlockingListener implements OCommandResultListener, Iterat
         }
 
         if (item instanceof OIdentifiable) {
-            final ORecord record = this.database.getRecord((OIdentifiable) item);
-            if (record instanceof OElement) {
-                return (OElement) record;
-            }
+            final OIdentifiable identifiable = (OIdentifiable) item;
+            final OElement record = this.database.load(identifiable.getIdentity());
+            return record;
         }
 
         throw new IllegalStateException("Unknown document type [" + item.getClass() + "].");

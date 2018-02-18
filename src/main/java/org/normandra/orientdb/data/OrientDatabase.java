@@ -240,49 +240,63 @@ public class OrientDatabase implements Database {
                 url.toLowerCase().startsWith("local:");
     }
 
-    public static OrientDatabase create(
+    public static OrientDatabase createRemote(
             final String url, final String database, final String userid, final String password,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final Collection<Class> types) {
-        final OrientPool pool;
-        if (isLocal(url)) {
-            pool = new LocalOrientPool(url, database, userid, password);
-        } else {
-            pool = new FixedOrientPool(url, database, userid, password);
-        }
+        final OrientPool pool = new FixedOrientPool(url, database, userid, password);
         final AnnotationParser parser = new AnnotationParser(columnFactory, types);
         final DatabaseMeta meta = new DatabaseMeta(parser.read());
         return new OrientDatabase(url, pool, factory, mode, meta);
     }
 
-    public static OrientDatabase create(
+    public static OrientDatabase createRemote(
             final String url, final String database, final String userid, final String password,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final DatabaseMetaBuilder metaBuilder) {
-        final OrientPool pool;
-        if (isLocal(url)) {
-            pool = new LocalOrientPool(url, database, userid, password);
-        } else {
-            pool = new FixedOrientPool(url, database, userid, password);
-        }
+        final OrientPool pool = new FixedOrientPool(url, database, userid, password);
         final DatabaseMeta meta = metaBuilder.withColumnFactory(columnFactory).create();
         return new OrientDatabase(url, pool, factory, mode, meta);
     }
 
-    public static OrientDatabase create(
+    public static OrientDatabase createLocalFile(
             final File path, final String database,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final Collection<Class> types) {
         final String url = "plocal:" + FilenameUtils.normalize(path.getAbsolutePath());
-        return create(url, database, "admin", "admin", factory, mode, types);
+        final OrientPool pool = new LocalFileOrientPool(url, database, "admin", "admin");
+        final AnnotationParser parser = new AnnotationParser(columnFactory, types);
+        final DatabaseMeta meta = new DatabaseMeta(parser.read());
+        return new OrientDatabase(url, pool, factory, mode, meta);
     }
 
-    public static OrientDatabase create(
+    public static OrientDatabase createLocalFile(
             final File path, final String database,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final DatabaseMetaBuilder metaBuilder) {
         final String url = "plocal:" + FilenameUtils.normalize(path.getAbsolutePath());
-        return create(url, database, "admin", "admin", factory, mode, metaBuilder);
+        final OrientPool pool = new LocalFileOrientPool(url, database, "admin", "admin");
+        final DatabaseMeta meta = metaBuilder.withColumnFactory(columnFactory).create();
+        return new OrientDatabase(url, pool, factory, mode, meta);
+    }
+
+    public static OrientDatabase createLocalServer(
+            final File path, final String database, final String userid, final String password,
+            final EntityCacheFactory factory, final DatabaseConstruction mode,
+            final Collection<Class> types) {
+        final OrientPool pool = new LocalServerOrientPool(path, database, userid, password);
+        final AnnotationParser parser = new AnnotationParser(columnFactory, types);
+        final DatabaseMeta meta = new DatabaseMeta(parser.read());
+        return new OrientDatabase("remote:localhost", pool, factory, mode, meta);
+    }
+
+    public static OrientDatabase createLocalServer(
+            final File path, final String database, final String userid, final String password,
+            final EntityCacheFactory factory, final DatabaseConstruction mode,
+            final DatabaseMetaBuilder metaBuilder) {
+        final OrientPool pool = new LocalServerOrientPool(path, database, userid, password);
+        final DatabaseMeta meta = metaBuilder.withColumnFactory(columnFactory).create();
+        return new OrientDatabase("remote:localhost", pool, factory, mode, meta);
     }
 
     protected final String url;

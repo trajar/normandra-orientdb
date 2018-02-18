@@ -200,7 +200,8 @@ import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.index.OIndex;
 import com.orientechnologies.orient.core.record.OElement;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
+import com.orientechnologies.orient.core.sql.executor.OResult;
+import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import com.orientechnologies.orient.core.tx.OTransaction;
 import org.apache.commons.lang.NullArgumentException;
 import org.normandra.*;
@@ -602,11 +603,22 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         }
         query.append("]");
 
-        for (final Object item : this.database.query(new OSQLSynchQuery(query.toString()), parameters.toArray())) {
-            if (item instanceof OIdentifiable) {
-                final OIdentifiable doc = fixIdentifiable((OIdentifiable) item);
-                if (doc != null) {
-                    return doc;
+        final OResultSet results = this.database.query(query.toString(), parameters.toArray());
+        if (null == results) {
+            return null;
+        }
+        while (results.hasNext()) {
+            final OResult item = results.next();
+            if (item.getElement().isPresent()) {
+                final OElement element = item.getElement().get();
+                if (element != null) {
+                    fixIdentifiable(element);
+                }
+            }
+            if (item.getIdentity().isPresent()) {
+                final ORID rid = item.getIdentity().get();
+                if (rid != null) {
+                    return this.database.load(rid);
                 }
             }
         }

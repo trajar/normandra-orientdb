@@ -207,8 +207,8 @@ import java.util.*;
 /**
  * a local on-demand orientdb connection pool
  */
-public class LocalOrientPool implements OrientPool {
-    private static final Logger logger = LoggerFactory.getLogger(LocalOrientPool.class);
+public class LocalFileOrientPool implements OrientPool {
+    private static final Logger logger = LoggerFactory.getLogger(LocalFileOrientPool.class);
 
     private final String url;
 
@@ -226,11 +226,11 @@ public class LocalOrientPool implements OrientPool {
 
     private final long timerDelay = getTimeOutDelay();
 
-    public LocalOrientPool(final String url, final String database) {
+    public LocalFileOrientPool(final String url, final String database) {
         this(url, database, null, null);
     }
 
-    public LocalOrientPool(final String url, final String database, final String user, final String pwd) {
+    public LocalFileOrientPool(final String url, final String database, final String user, final String pwd) {
         this.url = url;
         this.user = user;
         this.password = pwd;
@@ -242,11 +242,13 @@ public class LocalOrientPool implements OrientPool {
     synchronized public ODatabaseDocument acquire() {
         if (null == this.orientdb || (this.opened.isEmpty() && this.timerDelay > 0)) {
             Orient.instance().startup();
-            this.orientdb = new OrientDB(this.url, this.user, this.password, OrientDBConfig.defaultConfig());
+            this.orientdb = new OrientDB(this.url, OrientDBConfig.defaultConfig());
+            logger.debug("Creating orientdb instance for [" + this.url + "] ...");
         }
 
         // ensure database exists
         if (!this.orientdb.exists(this.database)) {
+            logger.debug("Creating local file database [" + this.database + "] ...");
             this.orientdb.create(this.database, ODatabaseType.PLOCAL);
         }
 

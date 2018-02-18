@@ -248,7 +248,7 @@ public class OrientHelper implements TestHelper {
     public void create(DatabaseMetaBuilder builder) throws Exception {
         Orient.instance().startup();
         ensurePaths();
-        database = OrientDatabase.create(dir, databaseName, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+        database = OrientDatabase.createLocalFile(dir, databaseName, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
         entityManager = new EntityManagerFactory(this.database, this.database.getMeta()).create();
     }
 
@@ -256,7 +256,7 @@ public class OrientHelper implements TestHelper {
     public void create(GraphMetaBuilder builder) throws Exception {
         Orient.instance().startup();
         ensurePaths();
-        database = OrientGraphDatabase.create(dir, databaseName, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+        database = OrientGraphDatabase.createLocalFile(dir, databaseName, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
         graphManager = new GraphManagerFactory((OrientGraphDatabase) this.database, (GraphMeta) this.database.getMeta()).create();
     }
 

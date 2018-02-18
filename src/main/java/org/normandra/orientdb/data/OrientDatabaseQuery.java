@@ -269,7 +269,7 @@ public class OrientDatabaseQuery<T> implements DatabaseQuery<T> {
             @Override
             public T next() {
                 final OElement element = itr.next();
-                final ODocument doc = element != null ? element.getDatabase().getRecord(element) : null;
+                final ODocument doc = element != null ? element.getDatabase().load(element.getIdentity()) : null;
                 if (null == doc) {
                     return null;
                 }
