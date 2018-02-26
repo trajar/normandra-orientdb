@@ -54,7 +54,7 @@ public class LocalServerOrientPool implements OrientPool {
             try {
                 // spawn server
                 this.localServer.startIfNotRunning();
-                this.localServer.waitUntilReady(60 * 1000);
+                this.localServer.waitUntilReady(1000 * 60 * 5);
                 this.firstTime = false;
             } catch (final Exception e) {
                 logger.warn("Unable to start local database server.", e);

@@ -65,21 +65,28 @@ public class LocalEmbeddedServer {
 
         // spawn process
         final File bin = new File(this.orientDir, "bin").getCanonicalFile();
-        final String ext = SystemUtils.IS_OS_WINDOWS ? ".bat" : ".sh";
         final String rootPwd = rootPassword();
-        ProcessBuilder builder = new ProcessBuilder()
-                .command(new File(bin, "server" + ext).getCanonicalPath());
-        if (rootPwd != null && !rootPwd.isEmpty()) {
-            builder.environment().put("ORIENTDB_ROOT_PASSWORD", rootPwd);
+        ProcessBuilder startup = new ProcessBuilder();
+        if (SystemUtils.IS_OS_WINDOWS) {
+            startup.command(new File(bin, "server.bat").getCanonicalPath());
+        } else {
+            startup.command("sh", new File(bin, "server.sh").getCanonicalPath());
         }
-        this.activeProcess = builder.start();
+        if (rootPwd != null && !rootPwd.isEmpty()) {
+            startup.environment().put("ORIENTDB_ROOT_PASSWORD", rootPwd);
+        }
+        this.activeProcess = startup.start();
 
         // register shutdown
         this.shutdownHook = new Thread(() -> {
             try {
-                new ProcessBuilder()
-                        .command(new File(bin, "shutdown" + ext).getCanonicalPath())
-                        .start();
+                ProcessBuilder shutdown = new ProcessBuilder();
+                if (SystemUtils.IS_OS_WINDOWS) {
+                    shutdown.command(new File(bin, "shutdown.bat").getCanonicalPath());
+                } else {
+                    shutdown.command("sh", new File(bin, "shutdown.sh").getCanonicalPath());
+                }
+                shutdown.start();
             } catch (final Exception e) {
                 logger.warn("Unable to execute shutdown script.", e);
             }
