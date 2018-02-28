@@ -28,6 +28,8 @@ public class LocalServerOrientPool implements OrientPool {
 
     private final String password;
 
+    private int startTimeoutMsec = 1000 * 60 * 5;
+
     private boolean firstTime = true;
 
     public LocalServerOrientPool(final File orientDir, final String database, final String user, final String pwd) {
@@ -48,13 +50,26 @@ public class LocalServerOrientPool implements OrientPool {
         return this.localServer;
     }
 
+    public int getStartTimeoutMsec() {
+        return startTimeoutMsec;
+    }
+
+    public void setStartTimeoutMsec(int startTimeoutMsec) {
+        this.startTimeoutMsec = startTimeoutMsec;
+    }
+
+    public void start() throws Exception {
+        this.localServer.startIfNotRunning();
+        if (!this.localServer.waitUntilReady(this.startTimeoutMsec)) {
+            throw new IllegalStateException("Unable to confirm local server started.");
+        }
+    }
+
     @Override
     public ODatabaseDocument acquire() {
         if (this.firstTime) {
             try {
-                // spawn server
-                this.localServer.startIfNotRunning();
-                this.localServer.waitUntilReady(1000 * 60 * 5);
+                this.start();
                 this.firstTime = false;
             } catch (final Exception e) {
                 logger.warn("Unable to start local database server.", e);

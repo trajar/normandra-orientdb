@@ -72,8 +72,10 @@ public class LocalEmbeddedServer {
         } else {
             startup.command("sh", new File(bin, "server.sh").getCanonicalPath());
         }
-        if (rootPwd != null && !rootPwd.isEmpty()) {
+        if ("root".equalsIgnoreCase(this.serverUser) && rootPwd != null && !rootPwd.isEmpty()) {
+            logger.trace("Setting local server root password.");
             startup.environment().put("ORIENTDB_ROOT_PASSWORD", rootPwd);
+            startup.environment().put("JAVA_OPTS", "-DORIENTDB_ROOT_PASSWORD=" + rootPwd);
         }
         this.activeProcess = startup.start();
 
@@ -103,11 +105,13 @@ public class LocalEmbeddedServer {
         final long startTime = System.currentTimeMillis();
         while (timeoutMsec <= 0 || System.currentTimeMillis() - startTime <= timeoutMsec) {
             if (this.isRunning()) {
+                logger.debug("Server status confirmed as running.");
                 return true;
             }
             final long sleepMsec = timeoutMsec > 0 ? Math.min(500, timeoutMsec) : 250;
             Thread.sleep(sleepMsec);
         }
+        logger.warn("Unable to determine server running status.");
         return false;
     }
 
@@ -143,9 +147,11 @@ public class LocalEmbeddedServer {
         try {
             final Map<String, ?> status = this.queryStatus();
             if (null == status || status.isEmpty()) {
+                logger.warn("Found empty status, server not likely ready.");
                 return false;
             }
             final Object connectionsObj = status.get("connections");
+            logger.debug("Found connection status value of " + connectionsObj + ".");
             if (connectionsObj instanceof Collection) {
                 return ((Collection) connectionsObj).size() > 0;
             }
@@ -175,7 +181,7 @@ public class LocalEmbeddedServer {
         try {
             final CloseableHttpResponse response = httpclient.execute(httpget);
             if (response.getStatusLine().getStatusCode() == 401) {
-                throw new IllegalStateException("Unable to query server, received 401 status.");
+                throw new IllegalStateException("Unable to query server, received 401 status from [" + this.getHttpUrl() + "].");
             }
             try {
                 final HttpEntity entity = response.getEntity();
@@ -198,7 +204,7 @@ public class LocalEmbeddedServer {
         this.binaryPort = this.findNetworkPortByType("binary");
         if (this.binaryPort <= 0) {
             final int defaultPort = 2424;
-            logger.info("Unable to determine port number for local server, defaulting to " + defaultPort + ".");
+            logger.warn("Unable to determine port number for local server, defaulting to " + defaultPort + ".");
             this.binaryPort = defaultPort;
         }
         return this.binaryPort;
@@ -211,7 +217,7 @@ public class LocalEmbeddedServer {
         this.httpPort = this.findNetworkPortByType("http");
         if (this.httpPort <= 0) {
             final int defaultPort = 2480;
-            logger.info("Unable to determine port number for local server, defaulting to " + defaultPort + ".");
+            logger.warn("Unable to determine port number for local server, defaulting to " + defaultPort + ".");
             this.httpPort = defaultPort;
         }
         return this.httpPort;

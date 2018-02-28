@@ -209,8 +209,11 @@ import org.normandra.meta.EntityMeta;
 import org.normandra.meta.GraphMeta;
 import org.normandra.meta.GraphMetaBuilder;
 import org.normandra.orientdb.data.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Collections;
 
 public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase {
 
@@ -242,6 +245,8 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
         return new OrientGraphDatabase("remote:localhost", pool, factory, mode, meta);
     }
 
+    private static final Logger logger = LoggerFactory.getLogger(OrientGraphDatabase.class);
+
     private final GraphMeta meta;
 
     protected OrientGraphDatabase(final String url, final OrientPool pool, final EntityCacheFactory cache, final DatabaseConstruction mode, final GraphMeta meta) {
@@ -261,8 +266,8 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
             throw new IllegalStateException("Expected database document internal type, but found [" + db.getClass() + "].");
         }
         final ODatabaseDocumentInternal internal = (ODatabaseDocumentInternal) db;
-        final boolean autotx = "true" .equalsIgnoreCase(System.getProperty("graph.autoStartTx", "false"));
-        final boolean useLightweightEdges = "true" .equalsIgnoreCase(System.getProperty("graph.useLightweightEdges", "false"));
+        final boolean autotx = "true".equalsIgnoreCase(System.getProperty("graph.autoStartTx", "false"));
+        final boolean useLightweightEdges = "true".equalsIgnoreCase(System.getProperty("graph.useLightweightEdges", "false"));
         final com.tinkerpop.blueprints.impls.orient.OrientGraph api = new com.tinkerpop.blueprints.impls.orient.OrientGraph(internal, autotx);
         api.setUseLightweightEdges(useLightweightEdges);
         return new OrientGraph(this.meta, api, this.statementsByName, this.cache.create());
@@ -282,7 +287,8 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
                 final String schemaName = entityMeta.getTable();
                 final OClass schemaClass = database.getMetadata().getSchema().getClass(schemaName);
                 if (schemaClass != null && !schemaClass.getSuperClassesNames().contains(vertexClass.getName())) {
-                    database.command("ALTER CLASS " + schemaName + " SUPERCLASS +" + vertexClass.getName());
+                    schemaClass.setSuperClasses(Collections.singletonList(vertexClass));
+                    logger.debug("Altering class [" + schemaName + "] with vertex superclass.");
                 }
             }
             final OClass edgeClass = database.getMetadata().getSchema().getOrCreateClass(OrientEdgeType.CLASS_NAME);
@@ -291,6 +297,8 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
                 final OClass schemaClass = database.getMetadata().getSchema().getClass(schemaName);
                 if (schemaClass != null && !schemaClass.getSuperClassesNames().contains(edgeClass.getName())) {
                     database.command("ALTER CLASS " + schemaName + " SUPERCLASS +" + edgeClass.getName());
+                    schemaClass.setSuperClasses(Collections.singletonList(edgeClass));
+                    logger.debug("Altering class [" + schemaName + "] with edge superclass.");
                 }
             }
         }
