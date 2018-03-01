@@ -604,45 +604,42 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         }
         query.append("]");
 
-        final OResultSet results = this.database.query(query.toString(), parameters.toArray());
-        if (null == results) {
+        try (final OResultSet results = this.database.query(query.toString(), parameters.toArray())) {
+            int numMatching = 0;
+            while (results.hasNext()) {
+                final OResult item = results.next();
+                if (item.getElement().isPresent()) {
+                    final OElement element = item.getElement().get();
+                    final OIdentifiable fixed = fixIdentifiable(element);
+                    if (fixed != null) {
+                        return fixed;
+                    }
+                } else if (item.getIdentity().isPresent()) {
+                    final ORID rid = item.getIdentity().get();
+                    final OIdentifiable fetched = this.database.load(rid);
+                    if (fetched != null) {
+                        return fetched;
+                    }
+                } else if (item.getRecord().isPresent()) {
+                    final ORecord record = item.getRecord().get();
+                    final OIdentifiable fixed = fixIdentifiable(record);
+                    if (fixed != null) {
+                        return fixed;
+                    }
+                } else {
+                    final Object rid = item.getProperty("rid");
+                    final OIdentifiable fetched = rid instanceof ORID ? this.database.load((ORID) rid) : null;
+                    if (fetched != null) {
+                        return fetched;
+                    }
+                }
+                numMatching++;
+            }
+            if (numMatching > 0) {
+                throw new IllegalStateException("Found matching index keys but unable to build identifiable record.");
+            }
             return null;
         }
-
-        int numMatching = 0;
-        while (results.hasNext()) {
-            final OResult item = results.next();
-            if (item.getElement().isPresent()) {
-                final OElement element = item.getElement().get();
-                final OIdentifiable fixed = fixIdentifiable(element);
-                if (fixed != null) {
-                    return fixed;
-                }
-            } else if (item.getIdentity().isPresent()) {
-                final ORID rid = item.getIdentity().get();
-                final OIdentifiable fetched = this.database.load(rid);
-                if (fetched != null) {
-                    return fetched;
-                }
-            } else if (item.getRecord().isPresent()) {
-                final ORecord record = item.getRecord().get();
-                final OIdentifiable fixed = fixIdentifiable(record);
-                if (fixed != null) {
-                    return fixed;
-                }
-            } else {
-                final Object rid = item.getProperty("rid");
-                final OIdentifiable fetched = rid instanceof ORID ? this.database.load((ORID) rid) : null;
-                if (fetched != null) {
-                    return fetched;
-                }
-            }
-            numMatching++;
-        }
-        if (numMatching > 0) {
-            throw new IllegalStateException("Found matching index keys but unable to build identifiable record.");
-        }
-        return null;
     }
 
     public final Collection<OIdentifiable> findIdByKeys(final EntityMeta meta, final Set<Object> keys) {
