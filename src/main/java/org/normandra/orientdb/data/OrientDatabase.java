@@ -493,20 +493,11 @@ public class OrientDatabase implements Database {
         }
         for (final IndexMeta index : entity.getIndexed()) {
             final String uniqueness = index.isUnique() ? "UNIQUE" : "NOTUNIQUE";
-            if (index.getColumns().size() == 1) {
-                final ColumnMeta column = index.getColumns().iterator().next();
-                final String indexName = schemaName + "." + column.getName();
-                if (!hasIndex(database, indexName)) {
-                    logger.debug("Adding property index [" + indexName + "] (" + uniqueness + ") ...");
-                    database.command("CREATE INDEX " + indexName + " " + uniqueness);
-                }
-            } else {
-                final Collection<String> names = index.getColumns().stream().map(ColumnMeta::getName).collect(Collectors.toList());
-                final String indexName = schemaName + "." + index.getName();
-                if (!names.isEmpty() && !hasIndex(database, indexName)) {
-                    logger.debug("Adding property index [" + indexName + "] with " + names + " (" + uniqueness + ") ...");
-                    database.command("CREATE INDEX " + indexName + " ON " + schemaName + " (" + StringUtils.join(names, ",") + ") " + uniqueness);
-                }
+            final Collection<String> names = index.getColumns().stream().map(ColumnMeta::getName).collect(Collectors.toList());
+            final String indexName = schemaName + "." + index.getName();
+            if (!names.isEmpty() && !hasIndex(database, indexName)) {
+                logger.debug("Adding property index [" + indexName + "] with " + names + " (" + uniqueness + ") ...");
+                database.command("CREATE INDEX " + indexName + " ON " + schemaName + " (" + StringUtils.join(names, ",") + ") " + uniqueness);
             }
         }
     }
