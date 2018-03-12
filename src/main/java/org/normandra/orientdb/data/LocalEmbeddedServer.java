@@ -73,9 +73,10 @@ public class LocalEmbeddedServer {
             startup.command("sh", new File(bin, "server.sh").getCanonicalPath());
         }
         if ("root".equalsIgnoreCase(this.serverUser) && rootPwd != null && !rootPwd.isEmpty()) {
+            final int hoursInSec = 3600;
             logger.trace("Setting local server root password.");
             startup.environment().put("ORIENTDB_ROOT_PASSWORD", rootPwd);
-            startup.environment().put("JAVA_OPTS", "-DORIENTDB_ROOT_PASSWORD=" + rootPwd);
+            startup.environment().put("JAVA_OPTS", "-DORIENTDB_ROOT_PASSWORD=" + rootPwd + " -Dnetwork.http.sessionExpireTimeout=" + (hoursInSec * 2));
         }
         this.activeProcess = startup.start();
 
