@@ -353,7 +353,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
     }
 
     @Override
-    public DatabaseQuery executeQuery(final EntityMeta meta, final String queryOrName, final Map<String, Object> params) throws NormandraException {
+    public DatabaseQuery query(final EntityMeta meta, final String queryOrName, final Map<String, Object> params) throws NormandraException {
         final OrientQuery query = this.statementsByName.get(queryOrName);
         if (query != null) {
             return this.executeNamedQuery(meta, query, params);
@@ -366,17 +366,17 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
     public Object scalarQuery(final String queryOrName) throws NormandraException {
         try {
             final OrientQuery query = this.statementsByName.get(queryOrName);
-            final OrientNonBlockingDocumentQuery synchronizedQuery;
+            final OrientSelfClosingQuery synchronizedQuery;
             if (query != null) {
-                synchronizedQuery = new OrientNonBlockingDocumentQuery(this.database, query.getQuery(), Collections.emptyList());
+                synchronizedQuery = new OrientSelfClosingQuery(this.database, query.getQuery(), Collections.emptyList());
             } else {
-                synchronizedQuery = new OrientNonBlockingDocumentQuery(this.database, queryOrName, Collections.emptyList());
+                synchronizedQuery = new OrientSelfClosingQuery(this.database, queryOrName, Collections.emptyList());
             }
-            final Iterator<OElement> itr = synchronizedQuery.execute();
+            final OResultSet itr = synchronizedQuery.execute();
             while (itr.hasNext()) {
-                final OElement element = itr.next();
-                if (element instanceof ODocument) {
-                    final ODocument document = (ODocument) element;
+                final OResult result = itr.next();
+                if (result.isElement()) {
+                    final ODocument document = (ODocument) result.getElement().get();
                     final Object[] values = document.fieldValues();
                     if (values != null && values.length > 0) {
                         return values[0];
@@ -390,25 +390,25 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
     }
 
     private DatabaseQuery executeNamedQuery(final EntityMeta meta, final OrientQuery query, final Map<String, Object> params) {
-        final OrientNonBlockingDocumentQuery activity = new OrientNonBlockingDocumentQuery(this.database, query.getQuery(), params);
-        return new OrientDatabaseQuery(this, meta, activity);
+        final OrientSelfClosingQuery q = new OrientSelfClosingQuery(this.database, query.getQuery(), params);
+        return new OrientDatabaseQuery(this, meta, q);
     }
 
     private DatabaseQuery executeDynamicQuery(final EntityMeta meta, final String query, final Map<String, Object> params) {
-        final OrientNonBlockingDocumentQuery activity = new OrientNonBlockingDocumentQuery(this.database, query, params);
-        return new OrientDatabaseQuery(this, meta, activity);
+        final OrientSelfClosingQuery q = new OrientSelfClosingQuery(this.database, query, params);
+        return new OrientDatabaseQuery(this, meta, q);
     }
 
-    protected final OrientNonBlockingDocumentQuery query(final String query) {
-        return new OrientNonBlockingDocumentQuery(this.database, query, Collections.emptyList());
+    protected final OrientSelfClosingQuery query(final String query) {
+        return new OrientSelfClosingQuery(this.database, query, Collections.emptyList());
     }
 
-    protected final OrientNonBlockingDocumentQuery query(final String query, final Collection<?> args) {
-        return new OrientNonBlockingDocumentQuery(this.database, query, args);
+    protected final OrientSelfClosingQuery query(final String query, final Collection<?> args) {
+        return new OrientSelfClosingQuery(this.database, query, args);
     }
 
-    protected final OrientNonBlockingDocumentQuery query(final String query, final Map<String, Object> args) {
-        return new OrientNonBlockingDocumentQuery(this.database, query, args);
+    protected final OrientSelfClosingQuery query(final String query, final Map<String, Object> args) {
+        return new OrientSelfClosingQuery(this.database, query, args);
     }
 
     @Override

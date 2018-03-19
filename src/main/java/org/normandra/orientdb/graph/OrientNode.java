@@ -268,7 +268,7 @@ public class OrientNode<T> implements Node<T> {
     }
 
     @Override
-    public <E> boolean hasEdge(final Node node, final E entity) throws NormandraException {
+    public <E, N> boolean hasEdge(final Node<N> node, final E entity) throws NormandraException {
         if (null == node) {
             throw new NullArgumentException("node");
         }
@@ -289,7 +289,7 @@ public class OrientNode<T> implements Node<T> {
     }
 
     @Override
-    public <E> Edge<E> createEdge(final Node node, final E entity) throws NormandraException {
+    public <E, N> Edge<E> createEdge(final Node<N> node, final E entity) throws NormandraException {
         if (null == node) {
             throw new NullArgumentException("node");
         }
@@ -353,7 +353,7 @@ public class OrientNode<T> implements Node<T> {
     public Iterable<Node> getNeighbors() throws NormandraException {
         try (final Transaction tx = this.graph.beginTransaction()) {
             final Set<Node> neighbors = new ArraySet<>();
-            for (final Node node : this.graph.queryVertices("select expand(both()) from " + this.element().getId())) {
+            for (final Node<?> node : this.graph.queryVertices("select expand(both()) from " + this.element().getId())) {
                 if (!this.equals(node)) {
                     neighbors.add(node);
                 }
@@ -406,7 +406,7 @@ public class OrientNode<T> implements Node<T> {
     }
 
     @Override
-    public Iterable<Node> expandByType(final int depth, final Class<?> type) throws NormandraException {
+    public <E, N> Iterable<Node<N>> expandByType(final int depth, final Class<E> type) throws NormandraException {
         if (null == type) {
             return Collections.emptyList();
         }
@@ -415,7 +415,7 @@ public class OrientNode<T> implements Node<T> {
     }
 
     @Override
-    public Iterable<Node> expandByTypes(final int depth, final Iterable<Class> types) throws NormandraException {
+    public <E, N> Iterable<Node<N>> expandByTypes(final int depth, final Iterable<Class<E>> types) throws NormandraException {
         if (null == types) {
             return Collections.emptyList();
         }
@@ -434,7 +434,7 @@ public class OrientNode<T> implements Node<T> {
         try (final Transaction tx = this.graph.beginTransaction()) {
             final List<String> quotedTypes = nodeTypes.stream().map((x) -> "'" + x + "'").collect(Collectors.toList());
             final String typeList = StringUtils.join(quotedTypes, ",");
-            final Set<Node> nodes = new HashSet<>();
+            final Set<Node<N>> nodes = new HashSet<>();
             for (final Node node : this.graph.queryVertices("traverse both(" + typeList + ") from " + this.element().getId() + " maxdepth " + depth)) {
                 if (!this.equals(node)) {
                     nodes.add(node);
@@ -447,7 +447,7 @@ public class OrientNode<T> implements Node<T> {
     }
 
     @Override
-    public Iterable<Edge> getEdges() throws NormandraException {
+    public <E> Iterable<Edge<E>> getEdges() throws NormandraException {
         try (final Transaction tx = this.graph.beginTransaction()) {
             return this.graph.queryEdges("select expand(bothE()) from " + this.element().getId());
         } catch (final Exception e) {
@@ -456,7 +456,7 @@ public class OrientNode<T> implements Node<T> {
     }
 
     @Override
-    public Iterable<Edge> getEdgesByType(final Class type) throws NormandraException {
+    public <E> Iterable<Edge<E>> getEdgesByType(final Class<E> type) throws NormandraException {
         if (null == type) {
             return Collections.emptyList();
         }
@@ -470,7 +470,7 @@ public class OrientNode<T> implements Node<T> {
     }
 
     @Override
-    public Iterable<Edge> getEdgesByTypes(final Iterable<Class> types) throws NormandraException {
+    public <E> Iterable<Edge<E>> getEdgesByTypes(final Iterable<Class<E>> types) throws NormandraException {
         final Set<String> labels = new ArraySet<>();
         for (final Class<?> type : types) {
             final EntityMeta meta = this.graph.getMeta().getEdgeMeta(type);
@@ -486,7 +486,7 @@ public class OrientNode<T> implements Node<T> {
         return getEdgesByLabels(labels);
     }
 
-    private Iterable<Edge> getEdgesByLabels(final Iterable<String> labels) throws NormandraException {
+    private <E> Iterable<Edge<E>> getEdgesByLabels(final Iterable<String> labels) throws NormandraException {
         if (null == labels) {
             return Collections.emptyList();
         }

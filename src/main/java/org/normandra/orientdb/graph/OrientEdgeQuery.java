@@ -192,198 +192,50 @@
  *    limitations under the License.
  */
 
-package org.normandra.orientdb.data;
+package org.normandra.orientdb.graph;
 
-import com.orientechnologies.common.exception.OException;
-import com.orientechnologies.orient.core.command.OCommandResultListener;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.record.OElement;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.orientechnologies.orient.core.sql.executor.OResult;
+import org.apache.commons.lang.NullArgumentException;
+import org.normandra.graph.Edge;
+import org.normandra.graph.EdgeQuery;
+import org.normandra.orientdb.data.OrientSelfClosingQuery;
 
-import java.io.Closeable;
 import java.util.Iterator;
-import java.util.UUID;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
 
-public class OrientNonBlockingListener implements OCommandResultListener, Iterator<OElement>, Closeable, AutoCloseable {
-    private static final Logger logger = LoggerFactory.getLogger(OrientNonBlockingDocumentQuery.class);
+public class OrientEdgeQuery<T> implements EdgeQuery<T> {
+    private final OrientGraph graph;
 
-    private final ODatabaseDocument database;
+    private final OrientSelfClosingQuery delegate;
 
-    private final BlockingQueue<Object> queue = new ArrayBlockingQueue<>(250);
-
-    private OElement next = null;
-
-    private boolean done = false;
-
-    private boolean closed = false;
-
-    private boolean needsFetch = true;
-
-    public OrientNonBlockingListener(final ODatabaseDocument db) {
-        this.database = db;
+    public OrientEdgeQuery(final OrientGraph db, final OrientSelfClosingQuery query) {
+        if (null == db) {
+            throw new NullArgumentException("database");
+        }
+        if (null == query) {
+            throw new NullArgumentException("query");
+        }
+        this.graph = db;
+        this.delegate = query;
     }
 
     @Override
-    public boolean result(final Object record) {
-        if (null == record) {
-            return false;
-        }
-
-        while (!isClosed() && !isDone()) {
-            try {
-                if (queue.offer(record, 100, TimeUnit.MILLISECONDS)) {
-                    return true;
-                }
-            } catch (final InterruptedException e) {
-                logger.trace("Unable to offer document in non-blocking queue.", e);
+    public Iterator<Edge<T>> iterator() {
+        final Iterator<OResult> itr = this.delegate.iterator();
+        return new Iterator<Edge<T>>() {
+            @Override
+            public boolean hasNext() {
+                return itr.hasNext();
             }
-        }
 
-        return false;
-    }
-
-    @Override
-    public void end() {
-        this.endService();
-    }
-
-    @Override
-    public Object getResult() {
-        return null;
-    }
-
-    private boolean endService() {
-        synchronized (this) {
-            this.done = true;
-        }
-
-        for (int i = 0; i < 10; i++) {
-            try {
-                if (queue.offer(new EndOfServiceElement(), 500, TimeUnit.MILLISECONDS)) {
-                    return true;
-                }
-            } catch (final InterruptedException e) {
-                logger.trace("Unable to offer document in non-blocking queue.", e);
+            @Override
+            public Edge next() {
+                return graph.buildEdge(itr.next());
             }
-        }
-
-        logger.trace("Unable to add end-of-service item to queue.");
-        return false;
-    }
-
-    public boolean isDone() {
-        synchronized (this) {
-            return this.done;
-        }
+        };
     }
 
     @Override
-    public void close() {
-        synchronized (this) {
-            this.closed = true;
-        }
-
-        this.queue.clear();
-    }
-
-    public boolean isClosed() {
-        synchronized (this) {
-            if (this.closed) {
-                return true;
-            }
-        }
-
-        if (this.checkForDatabaseClosed()) {
-            return true;
-        }
-
-        return false;
-    }
-
-    private boolean checkForDatabaseClosed() {
-        if (!this.database.isClosed()) {
-            return false;
-        }
-
-        logger.trace("Database is closed so closing non-blocking listener.");
-        this.close();
-        return true;
-    }
-
-    @Override
-    public boolean hasNext() {
-        if (this.needsFetch) {
-            this.fetch();
-        }
-
-        return this.next != null;
-    }
-
-    @Override
-    public OElement next() {
-        if (this.needsFetch) {
-            this.fetch();
-        }
-
-        final OElement document = this.next;
-        this.next = null;
-        this.needsFetch = true;
-        return document;
-    }
-
-    private boolean fetch() {
-        while (!this.queue.isEmpty() || !(this.isClosed() || this.isDone())) {
-            try {
-                final Object item = this.queue.poll(250, TimeUnit.MILLISECONDS);
-                if (item instanceof EndOfServiceElement) {
-                    this.next = null;
-                    this.needsFetch = false;
-                    return false;
-                } else if (item != null) {
-                    this.next = this.buildDocument(item);
-                    if (this.next != null) {
-                        this.needsFetch = false;
-                        return true;
-                    }
-                }
-            } catch (final InterruptedException e) {
-                logger.trace("Unable to poll non-blocking queue.", e);
-            } catch (final Exception e) {
-                logger.warn("Unable to build document from queue item.", e);
-            }
-        }
-
-        return false;
-    }
-
-    private OElement buildDocument(final Object item) throws OException {
-        if (null == item) {
-            return null;
-        }
-
-        if (this.isClosed()) {
-            return null;
-        }
-
-        if (item instanceof OElement) {
-            return (OElement) item;
-        }
-
-        if (item instanceof OIdentifiable) {
-            final OIdentifiable identifiable = (OIdentifiable) item;
-            final OElement record = this.database.load(identifiable.getIdentity());
-            return record;
-        }
-
-        throw new IllegalStateException("Unknown document type [" + item.getClass() + "].");
-    }
-
-    private static class EndOfServiceElement {
-        private final UUID guid = UUID.randomUUID();
+    public void close() throws Exception {
+        this.delegate.close();
     }
 }

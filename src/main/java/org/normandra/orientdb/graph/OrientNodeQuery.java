@@ -194,24 +194,20 @@
 
 package org.normandra.orientdb.graph;
 
-import com.tinkerpop.blueprints.impls.orient.OrientEdge;
-import com.tinkerpop.blueprints.impls.orient.OrientElement;
+import com.orientechnologies.orient.core.sql.executor.OResult;
 import org.apache.commons.lang.NullArgumentException;
-import org.normandra.data.EntityReference;
-import org.normandra.graph.Edge;
-import org.normandra.meta.EntityMeta;
-import org.normandra.orientdb.data.OrientUtils;
+import org.normandra.graph.Node;
+import org.normandra.graph.NodeQuery;
+import org.normandra.orientdb.data.OrientSelfClosingQuery;
 
-import java.util.Collection;
 import java.util.Iterator;
-import java.util.Map;
 
-public class OrientNonBlockingEdgeQuery implements Iterable<Edge> {
+public class OrientNodeQuery<T> implements NodeQuery<T> {
     private final OrientGraph graph;
 
-    private final OrientNonBlockingGraphQuery delegate;
+    private final OrientSelfClosingQuery delegate;
 
-    public OrientNonBlockingEdgeQuery(final OrientGraph db, final String query, final Collection<?> params) {
+    public OrientNodeQuery(final OrientGraph db, final OrientSelfClosingQuery query) {
         if (null == db) {
             throw new NullArgumentException("database");
         }
@@ -219,48 +215,27 @@ public class OrientNonBlockingEdgeQuery implements Iterable<Edge> {
             throw new NullArgumentException("query");
         }
         this.graph = db;
-        this.delegate = new OrientNonBlockingGraphQuery(db, query, params);
-    }
-
-    public OrientNonBlockingEdgeQuery(final OrientGraph db, final String query, final Map<String, Object> params) {
-        if (null == db) {
-            throw new NullArgumentException("database");
-        }
-        if (null == query) {
-            throw new NullArgumentException("query");
-        }
-        this.graph = db;
-        this.delegate = new OrientNonBlockingGraphQuery(db, query, params);
+        this.delegate = query;
     }
 
     @Override
-    public Iterator<Edge> iterator() {
-        final Iterator<OrientElement> itr = this.delegate.iterator();
-        return new Iterator<Edge>() {
+    public Iterator<Node<T>> iterator() {
+        final Iterator<OResult> itr = this.delegate.iterator();
+        return new Iterator<Node<T>>() {
             @Override
             public boolean hasNext() {
                 return itr.hasNext();
             }
 
             @Override
-            public Edge next() {
-                final OrientElement element = itr.next();
-                if (null == element) {
-                    return null;
-                }
-                if (element instanceof OrientEdge) {
-                    final OrientEdge e = (OrientEdge) element;
-                    final String type = e.getLabel();
-                    final EntityMeta meta = graph.getMeta().getEdgeMeta(type);
-                    if (null == meta) {
-                        throw new IllegalStateException("Unable to find meta for type [" + type + "].");
-                    }
-                    final Object key = OrientUtils.unpackKey(meta, e.getRecord());
-                    final EntityReference data = new OrientEntityReference<>(graph, meta, e.getRecord());
-                    return graph.buildEdge(meta, key, e, data);
-                }
-                throw new IllegalStateException("Unknown element type [" + element.getClass() + "].");
+            public Node<T> next() {
+                return graph.buildNode(itr.next());
             }
         };
+    }
+
+    @Override
+    public void close() throws Exception {
+        this.delegate.close();
     }
 }

@@ -196,8 +196,8 @@ package org.normandra.orientdb.data;
 
 import com.orientechnologies.orient.core.record.OElement;
 import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.sql.executor.OResult;
 import org.normandra.DatabaseQuery;
-import org.normandra.NormandraException;
 import org.normandra.meta.EntityMeta;
 
 import java.util.ArrayList;
@@ -215,18 +215,18 @@ public class OrientDatabaseQuery<T> implements DatabaseQuery<T> {
 
     private final EntityMeta meta;
 
-    private final OrientNonBlockingDocumentQuery query;
+    private final OrientSelfClosingQuery query;
 
     private T firstItem = null;
 
-    public OrientDatabaseQuery(final OrientDatabaseSession session, final EntityMeta meta, final OrientNonBlockingDocumentQuery query) {
+    public OrientDatabaseQuery(final OrientDatabaseSession session, final EntityMeta meta, final OrientSelfClosingQuery query) {
         this.session = session;
         this.meta = meta;
         this.query = query;
     }
 
     @Override
-    public T first() throws NormandraException {
+    public T first() {
         if (this.firstItem != null) {
             return this.firstItem;
         }
@@ -242,7 +242,7 @@ public class OrientDatabaseQuery<T> implements DatabaseQuery<T> {
     }
 
     @Override
-    public List<T> list() throws NormandraException {
+    public List<T> list() {
         final List<T> list = new ArrayList<>();
         for (final T item : this) {
             if (item != null) {
@@ -253,13 +253,13 @@ public class OrientDatabaseQuery<T> implements DatabaseQuery<T> {
     }
 
     @Override
-    public boolean empty() throws NormandraException {
+    public boolean empty() {
         return this.first() != null;
     }
 
     @Override
     public Iterator<T> iterator() {
-        final Iterator<OElement> itr = this.query.iterator();
+        final Iterator<OResult> itr = this.query.iterator();
         return new Iterator<T>() {
             @Override
             public boolean hasNext() {
@@ -268,7 +268,8 @@ public class OrientDatabaseQuery<T> implements DatabaseQuery<T> {
 
             @Override
             public T next() {
-                final OElement element = itr.next();
+                final OResult result = itr.next();
+                final OElement element = result != null ? result.toElement() : null;
                 final ODocument doc = element != null ? element.getDatabase().load(element.getIdentity()) : null;
                 if (null == doc) {
                     return null;
@@ -280,5 +281,10 @@ public class OrientDatabaseQuery<T> implements DatabaseQuery<T> {
                 }
             }
         };
+    }
+
+    @Override
+    public void close() throws Exception {
+        this.query.close();
     }
 }

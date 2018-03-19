@@ -195,7 +195,13 @@
 package org.normandra.orientdb.graph;
 
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
+import com.orientechnologies.orient.core.metadata.schema.OClass;
+import com.orientechnologies.orient.core.record.OEdge;
+import com.orientechnologies.orient.core.record.OElement;
+import com.orientechnologies.orient.core.record.ORecord;
+import com.orientechnologies.orient.core.record.OVertex;
 import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.sql.executor.OResult;
 import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import org.normandra.NormandraException;
@@ -205,15 +211,10 @@ import org.normandra.data.DataHolderFactory;
 import org.normandra.data.EntityReference;
 import org.normandra.data.GraphDataHandler;
 import org.normandra.data.StaticEntityReference;
-import org.normandra.graph.Edge;
-import org.normandra.graph.Graph;
-import org.normandra.graph.Node;
+import org.normandra.graph.*;
 import org.normandra.meta.EntityMeta;
 import org.normandra.meta.GraphMeta;
-import org.normandra.orientdb.data.OrientDataFactory;
-import org.normandra.orientdb.data.OrientDatabaseSession;
-import org.normandra.orientdb.data.OrientQuery;
-import org.normandra.orientdb.data.OrientUtils;
+import org.normandra.orientdb.data.*;
 import org.normandra.property.PropertyFilter;
 import org.normandra.property.PropertyModel;
 import org.normandra.util.EntityPersistence;
@@ -387,6 +388,16 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         return null;
     }
 
+    @Override
+    public NodeQuery queryNodes(EntityMeta meta, String query, Map<String, Object> parameters) throws NormandraException {
+        return this.queryVertices(query, parameters);
+    }
+
+    @Override
+    public EdgeQuery queryEdges(EntityMeta meta, String query, Map<String, Object> parameters) throws NormandraException {
+        return this.queryEdges(query, parameters);
+    }
+
     public <T> OrientEdge<T> getEdge(final Class<T> clazz, final Object key) throws NormandraException {
         if (null == clazz || null == key) {
             return null;
@@ -448,33 +459,33 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         }
     }
 
-    public Iterable<Node> queryVertices(final String sql) {
-        return this.queryVertices(sql, Collections.emptyList());
+    public <E> OrientNodeQuery<E> queryVertices(final String sql) {
+        return new OrientNodeQuery(this, new OrientSelfClosingQuery(this.database, sql));
     }
 
-    public Iterable<Node> queryVertices(final String sql, final Map<String, Object> params) {
-        return new OrientNonBlockingNodeQuery(this, sql, params);
+    public <E> OrientNodeQuery<E> queryVertices(final String sql, final Map<String, Object> params) {
+        return new OrientNodeQuery(this, new OrientSelfClosingQuery(this.database, sql, params));
     }
 
-    public Iterable<Node> queryVertices(final String sql, final Collection<?> params) {
-        return new OrientNonBlockingNodeQuery(this, sql, params);
+    public <E> OrientNodeQuery<E> queryVertices(final String sql, final Collection<?> params) {
+        return new OrientNodeQuery(this, new OrientSelfClosingQuery(this.database, sql, params));
     }
 
-    public Iterable<Edge> queryEdges(final String sql) {
+    public <E> OrientEdgeQuery<E> queryEdges(final String sql) {
         return this.queryEdges(sql, Collections.emptyList());
     }
 
-    public Iterable<Edge> queryEdges(final String sql, final Map<String, Object> params) {
-        return new OrientNonBlockingEdgeQuery(this, sql, params);
+    public <E> OrientEdgeQuery<E> queryEdges(final String sql, final Map<String, Object> params) {
+        return new OrientEdgeQuery(this, new OrientSelfClosingQuery(this.database, sql, params));
     }
 
-    public Iterable<Edge> queryEdges(final String sql, final Collection<?> params) {
-        return new OrientNonBlockingEdgeQuery(this, sql, params);
+    public <E> OrientEdgeQuery<E> queryEdges(final String sql, final Collection<?> params) {
+        return new OrientEdgeQuery(this, new OrientSelfClosingQuery(this.database, sql, params));
     }
 
     @Override
     public void close() {
-        this.graph.shutdown(false, false);
+        this.graph.shutdown(true, false);
         super.close();
     }
 
@@ -489,6 +500,77 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         } else {
             return new OrientPropertyModel(meta, document);
         }
+    }
+
+    final EntityMeta findNodeMetaBySchema(final Optional<OClass> optionalType) {
+        if (null == optionalType || !optionalType.isPresent()) {
+            return null;
+        }
+
+        final OClass type = optionalType.get();
+        if (null == type) {
+            return null;
+        }
+        for (final String name : Arrays.asList(type.getName(), type.getShortName())) {
+            final EntityMeta ctx = this.meta.getNodeMeta(name);
+            if (ctx != null) {
+                return ctx;
+            }
+        }
+        return null;
+    }
+
+    final EntityMeta findEdgeMetaBySchema(final Optional<OClass> optionalType) {
+        if (null == optionalType || !optionalType.isPresent()) {
+            return null;
+        }
+
+        final OClass type = optionalType.get();
+        if (null == type) {
+            return null;
+        }
+        for (final String name : Arrays.asList(type.getName(), type.getShortName())) {
+            final EntityMeta ctx = this.meta.getEdgeMeta(name);
+            if (ctx != null) {
+                return ctx;
+            }
+        }
+        return null;
+    }
+
+    final <T> OrientNode<T> buildNode(final OResult result) {
+        return buildNode(null, result);
+    }
+
+    final <T> OrientNode<T> buildNode(EntityMeta meta, final OResult result) {
+        if (null == result) {
+            return null;
+        }
+
+        if (result.isElement()) {
+            final OElement element = result.getElement().get();
+            if (element instanceof OVertex) {
+                final OVertex vertex = (OVertex) element;
+                if (null == meta) {
+                    meta = findNodeMetaBySchema(element.getSchemaType());
+                }
+                final ORecord record = vertex.getRecord();
+                final ODocument document = this.graph.getRawGraph().load(record);
+                final Object key = OrientUtils.unpackKey(meta, document);
+                return buildNode(meta, key, this.graph.getVertex(document), new OrientEntityReference<>(this, meta, record.getIdentity()));
+            }
+        }
+
+        if (result.isRecord()) {
+            final ORecord record = result.getRecord().get();
+            final ODocument document = this.graph.getRawGraph().load(record);
+            if (null == meta) {
+                meta = findNodeMetaBySchema(document.getSchemaType());
+            }
+            return buildNode(meta, document, new OrientEntityReference<>(this, meta, record.getIdentity()));
+        }
+
+        throw new IllegalStateException();
     }
 
     final <T> OrientNode<T> buildNode(final EntityMeta meta, final ODocument document, final EntityReference<T> data) {
@@ -513,6 +595,42 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         final OrientNode<T> orientNode = new OrientNode<>(this, vertex, meta, data);
         this.cache.put(meta, key, orientNode);
         return orientNode;
+    }
+
+    final <T> OrientEdge<T> buildEdge(final OResult result) {
+        return buildEdge(null, result);
+    }
+
+    final <T> OrientEdge<T> buildEdge(EntityMeta meta, final OResult result) {
+        if (null == result) {
+            return null;
+        }
+
+        if (result.isElement()) {
+            final OElement element = result.getElement().get();
+            if (null == meta) {
+                meta = findEdgeMetaBySchema(element.getSchemaType());
+            }
+            if (element instanceof OEdge) {
+                final OEdge edge = (OEdge) element;
+                final ORecord record = edge.getRecord();
+                final ODocument document = this.graph.getRawGraph().load(record);
+                final Object key = OrientUtils.unpackKey(meta, document);
+                return buildEdge(meta, key, this.graph.getEdge(document), new OrientEntityReference<>(this, meta, record.getIdentity()));
+            }
+        }
+
+        if (result.isRecord()) {
+            final ORecord record = result.getRecord().get();
+            final ODocument document = this.graph.getRawGraph().load(record);
+            if (null == meta) {
+                meta = findNodeMetaBySchema(document.getSchemaType());
+            }
+            final Object key = OrientUtils.unpackKey(meta, document);
+            return buildEdge(meta, key, this.graph.getEdge(document), new OrientEntityReference<>(this, meta, record.getIdentity()));
+        }
+
+        throw new IllegalStateException();
     }
 
     final <T> OrientEdge<T> buildEdge(final EntityMeta meta, final Object key, final com.tinkerpop.blueprints.impls.orient.OrientEdge edge, final EntityReference<T> data) {
