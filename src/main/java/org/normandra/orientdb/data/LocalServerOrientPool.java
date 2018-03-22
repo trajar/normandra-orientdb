@@ -1,6 +1,5 @@
 package org.normandra.orientdb.data;
 
-import com.orientechnologies.orient.core.db.ODatabasePool;
 import com.orientechnologies.orient.core.db.ODatabaseType;
 import com.orientechnologies.orient.core.db.OrientDB;
 import com.orientechnologies.orient.core.db.OrientDBConfig;
@@ -20,7 +19,7 @@ public class LocalServerOrientPool implements OrientPool {
 
     private final LocalEmbeddedServer localServer;
 
-    private final ODatabasePool pool;
+    private final DynamicOrientPool pool;
 
     private final String database;
 
@@ -40,7 +39,7 @@ public class LocalServerOrientPool implements OrientPool {
             final File orientDir, final String serverUser, final String serverPwd,
             final String database, final String databaseUser, final String databasePwd) {
         this.localServer = new LocalEmbeddedServer(orientDir, serverUser, serverPwd);
-        this.pool = new ODatabasePool(this.localServer.getBinaryUrl(), database, databaseUser, databasePwd);
+        this.pool = new DynamicOrientPool(this.localServer.getBinaryUrl(), database, databaseUser, databasePwd);
         this.database = database;
         this.username = databaseUser;
         this.password = databasePwd;

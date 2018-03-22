@@ -485,7 +485,7 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
 
     @Override
     public void close() {
-        this.graph.shutdown(true, false);
+        this.graph.shutdown(false, false);
         super.close();
     }
 
