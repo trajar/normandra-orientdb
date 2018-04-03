@@ -300,14 +300,10 @@ public class OrientNode<T> implements Node<T> {
             return null;
         }
 
+        final Object key = meta.getId().fromEntity(entity);
         final EntityMeta meta = this.graph.getMeta().getEdgeMeta(entity.getClass());
         if (null == meta) {
             return null;
-        }
-
-        final Object key = meta.getId().fromEntity(entity);
-        if (this.graph.exists(meta, key)) {
-            throw new NormandraException("Edge already exists.");
         }
 
         final com.tinkerpop.blueprints.impls.orient.OrientEdge edge;

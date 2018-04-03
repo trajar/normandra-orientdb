@@ -207,8 +207,10 @@ import org.normandra.meta.GraphMetaBuilder;
 import org.normandra.orientdb.data.OrientDatabase;
 import org.normandra.orientdb.graph.OrientGraphDatabase;
 
-import java.io.File;
-import java.util.UUID;
+import java.io.*;
+import java.util.Enumeration;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 public class OrientHelper implements TestHelper {
 
@@ -218,9 +220,25 @@ public class OrientHelper implements TestHelper {
 
     private GraphManager graphManager;
 
-    private File dir = new File("target/orient-test");
+    private File embeddedDir = new File("target/orient-test");
 
     private String databaseName = "test_me_db";
+
+    private String serverUser = "root";
+
+    private String serverPwd = "admin";
+
+    private final boolean useLocalServer;
+
+    private final File orientDist = new File("src/test/dist/orientdb-community-importers-3.0.0RC2.zip");
+
+    public OrientHelper() {
+        this(true);
+    }
+
+    public OrientHelper(final boolean serverMode) {
+        useLocalServer = serverMode;
+    }
 
     @Override
     public Database getDatabase() {
@@ -246,23 +264,36 @@ public class OrientHelper implements TestHelper {
         throw new IllegalStateException();
     }
 
+    public File extractDistro() throws IOException {
+        System.setProperty("ORIENTDB_ROOT_PASSWORD", serverPwd);
+        return extract(orientDist, new File("target/localServerDistro").getCanonicalFile());
+    }
+
     @Override
     public void create(DatabaseMetaBuilder builder) throws Exception {
         Orient.instance().startup();
-        ensurePaths();
-        database = OrientDatabase.createLocalFile(dir, databaseName, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+        if (useLocalServer) {
+            database = OrientDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+        } else {
+            ensurePaths(embeddedDir);
+            database = OrientDatabase.createLocalFile(embeddedDir, databaseName, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+        }
         entityManager = new EntityManagerFactory(this.database, this.database.getMeta()).create();
     }
 
     @Override
     public void create(GraphMetaBuilder builder) throws Exception {
         Orient.instance().startup();
-        ensurePaths();
-        database = OrientGraphDatabase.createLocalFile(dir, databaseName, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+        if (useLocalServer) {
+            database = OrientGraphDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+        } else {
+            ensurePaths(embeddedDir);
+            database = OrientGraphDatabase.createLocalFile(embeddedDir, databaseName, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+        }
         graphManager = new GraphManagerFactory((OrientGraphDatabase) this.database, (GraphMeta) this.database.getMeta()).create();
     }
 
-    private void ensurePaths() {
+    private void ensurePaths(final File dir) {
         if (dir.exists()) {
             try {
                 FileUtils.deleteDirectory(dir);
@@ -291,12 +322,49 @@ public class OrientHelper implements TestHelper {
 
         Orient.instance().shutdown();
 
-        if (dir.exists()) {
+        if (embeddedDir.exists()) {
             try {
-                FileUtils.forceDelete(dir);
+                FileUtils.forceDelete(embeddedDir);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    private static File extract(final File archivePath, final File destinationPath) throws IOException {
+        File rootDest = null;
+        try (final ZipFile zipFile = new ZipFile(archivePath)) {
+            final byte[] buf = new byte[1024 * 32];
+            final Enumeration<? extends ZipEntry> entries = zipFile.entries();
+            while (entries.hasMoreElements()) {
+                final ZipEntry zipEntry = entries.nextElement();
+                final String entryName = zipEntry.getName().replace('\\', '/');
+                if (entryName.endsWith("/")) {
+                    final File destDir = new File(destinationPath, entryName);
+                    if (!destDir.exists()) {
+                        destDir.mkdirs();
+                    }
+                    if (null == rootDest) {
+                        rootDest = destDir;
+                    }
+                } else {
+                    final File destFile = new File(destinationPath, entryName);
+                    if (destFile.getParentFile() != null && !destFile.getParentFile().exists()) {
+                        destFile.getParentFile().mkdirs();
+                    }
+                    try (final OutputStream fos = new FileOutputStream(destFile)) {
+                        int n;
+                        try (final InputStream fis = zipFile.getInputStream(zipEntry)) {
+                            while ((n = fis.read(buf)) != -1) {
+                                if (n > 0) {
+                                    fos.write(buf, 0, n);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return rootDest != null ? rootDest : destinationPath;
     }
 }

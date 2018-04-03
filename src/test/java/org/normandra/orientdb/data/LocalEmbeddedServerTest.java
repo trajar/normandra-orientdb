@@ -4,15 +4,11 @@ import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.normandra.orientdb.OrientHelper;
 
-import java.io.*;
-import java.util.Enumeration;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
+import java.io.File;
 
 public class LocalEmbeddedServerTest {
-
-    File orientDist = new File("src/test/dist/orientdb-community-importers-3.0.0RC2.zip");
 
     File orientDir = null;
 
@@ -22,7 +18,8 @@ public class LocalEmbeddedServerTest {
 
     @Before
     public void unpackDistribution() throws Exception {
-        orientDir = extract(orientDist, new File("target/LocalEmbeddedServerTest").getCanonicalFile());
+        System.setProperty("ORIENTDB_ROOT_PASSWORD", serverPwd);
+        orientDir = new OrientHelper().extractDistro();
     }
 
     @Test
@@ -52,42 +49,5 @@ public class LocalEmbeddedServerTest {
         }
         pool.close();
         Assert.assertFalse(pool.getServer().isRunning());
-    }
-
-    private static File extract(final File archivePath, final File destinationPath) throws IOException {
-        File rootDest = null;
-        try (final ZipFile zipFile = new ZipFile(archivePath)) {
-            final byte[] buf = new byte[1024 * 32];
-            final Enumeration<? extends ZipEntry> entries = zipFile.entries();
-            while (entries.hasMoreElements()) {
-                final ZipEntry zipEntry = entries.nextElement();
-                final String entryName = zipEntry.getName().replace('\\', '/');
-                if (entryName.endsWith("/")) {
-                    final File destDir = new File(destinationPath, entryName);
-                    if (!destDir.exists()) {
-                        destDir.mkdirs();
-                    }
-                    if (null == rootDest) {
-                        rootDest = destDir;
-                    }
-                } else {
-                    final File destFile = new File(destinationPath, entryName);
-                    if (destFile.getParentFile() != null && !destFile.getParentFile().exists()) {
-                        destFile.getParentFile().mkdirs();
-                    }
-                    try (final OutputStream fos = new FileOutputStream(destFile)) {
-                        int n;
-                        try (final InputStream fis = zipFile.getInputStream(zipEntry)) {
-                            while ((n = fis.read(buf)) != -1) {
-                                if (n > 0) {
-                                    fos.write(buf, 0, n);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return rootDest != null ? rootDest : destinationPath;
     }
 }

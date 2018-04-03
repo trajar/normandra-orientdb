@@ -65,6 +65,9 @@ public class LocalEmbeddedServer {
 
         // spawn process
         final File bin = new File(this.orientDir, "bin").getCanonicalFile();
+        if (!bin.exists()) {
+            throw new IllegalStateException();
+        }
         final String rootPwd = rootPassword();
         ProcessBuilder startup = new ProcessBuilder();
         if (SystemUtils.IS_OS_WINDOWS) {

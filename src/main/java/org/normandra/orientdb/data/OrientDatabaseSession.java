@@ -584,10 +584,13 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
             if (keyIdx != null) {
                 final Object packedKey = parameters.iterator().next();
                 final Object value = keyIdx.get(packedKey);
-                if (value instanceof OIdentifiable) {
-                    return this.fixIdentifiable((OIdentifiable) value);
-                } else {
+                if (null == value) {
                     return null;
+                } else if (value instanceof OIdentifiable) {
+                    final OIdentifiable fixed = fixIdentifiable((OIdentifiable) value);
+                    if (fixed != null) {
+                        return fixed;
+                    }
                 }
             }
         }

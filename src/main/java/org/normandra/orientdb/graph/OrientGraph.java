@@ -263,11 +263,6 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
 
         final OrientVertex vertex;
         try (final Transaction tx = this.beginTransaction()) {
-            // ensure we don't already have node
-            if (this.exists(meta, key)) {
-                throw new NormandraException("Node already exists.");
-            }
-
             // save entity using property model
             final String schemaName = meta.getTable();
             final String clusterName = null;
