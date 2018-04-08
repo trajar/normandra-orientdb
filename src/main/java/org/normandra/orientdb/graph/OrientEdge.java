@@ -289,14 +289,7 @@ public class OrientEdge<T> implements Edge<T> {
             return null;
         }
 
-        final String schemaName = document.getSchemaClass().getName();
-        final EntityMeta meta = this.graph.getMeta().getNodeMeta(schemaName);
-        if (null == meta) {
-            return null;
-        }
-
-        final EntityReference reference = new OrientEntityReference<>(this.graph, meta, document);
-        return this.graph.buildNode(meta, document, reference);
+        return this.graph.buildNode(document);
     }
 
     @Override

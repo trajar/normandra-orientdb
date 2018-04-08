@@ -1,13 +1,12 @@
 package org.normandra.orientdb.data;
 
-import com.orientechnologies.orient.core.db.ODatabaseType;
-import com.orientechnologies.orient.core.db.OrientDB;
-import com.orientechnologies.orient.core.db.OrientDBConfig;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.Map;
 
 /**
  * a local pool that is tied to a local/embedded server instance
@@ -73,13 +72,22 @@ public class LocalServerOrientPool implements OrientPool {
             } catch (final Exception e) {
                 logger.warn("Unable to start local database server.", e);
             }
+            boolean exists = false;
             try {
                 // ensure database exists
-                try (final OrientDB db = new OrientDB(this.localServer.getBinaryUrl(), this.username, this.password, OrientDBConfig.defaultConfig())) {
-                    db.createIfNotExists(this.database, ODatabaseType.PLOCAL);
+                final Map<String, ?> dbconfig = this.localServer.getDatabase(this.database);
+                if (dbconfig != null && dbconfig.size() > 0) {
+                    exists = true;
                 }
             } catch (final Exception e) {
-                logger.warn("Unable to create local database [" + this.database + "].", e);
+                logger.debug("Unable to query local database [" + this.database + "].", e);
+            }
+            if (!exists) {
+                try {
+                    this.localServer.createDatabase(this.database);
+                } catch (IOException e) {
+                    logger.warn("Unaboe to create local database [" + this.database + "].", e);
+                }
             }
         }
         return this.pool.acquire();

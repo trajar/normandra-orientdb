@@ -194,9 +194,7 @@
 
 package org.normandra.orientdb.data;
 
-import com.orientechnologies.orient.core.record.OElement;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.executor.OResult;
 import org.normandra.DatabaseQuery;
 import org.normandra.meta.EntityMeta;
 
@@ -259,7 +257,7 @@ public class OrientDatabaseQuery<T> implements DatabaseQuery<T> {
 
     @Override
     public Iterator<T> iterator() {
-        final Iterator<OResult> itr = this.query.iterator();
+        final Iterator<ODocument> itr = this.query.iterator();
         return new Iterator<T>() {
             @Override
             public boolean hasNext() {
@@ -268,9 +266,7 @@ public class OrientDatabaseQuery<T> implements DatabaseQuery<T> {
 
             @Override
             public T next() {
-                final OResult result = itr.next();
-                final OElement element = result != null ? result.toElement() : null;
-                final ODocument doc = element != null ? element.getDatabase().load(element.getIdentity()) : null;
+                final ODocument doc = itr.next();
                 if (null == doc) {
                     return null;
                 }

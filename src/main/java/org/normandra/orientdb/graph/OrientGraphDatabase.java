@@ -197,7 +197,9 @@ package org.normandra.orientdb.graph;
 import com.orientechnologies.orient.core.db.ODatabase;
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
+import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.tinkerpop.blueprints.impls.orient.OrientEdgeType;
 import com.tinkerpop.blueprints.impls.orient.OrientVertexType;
 import org.apache.commons.io.FilenameUtils;
@@ -262,10 +264,10 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
     @Override
     public OrientGraph createGraph() {
         final ODatabaseDocument db = this.pool.acquire();
-        if (!(db instanceof ODatabaseDocumentInternal)) {
+        if (!(db instanceof ODatabaseDocumentTx)) {
             throw new IllegalStateException("Expected database document internal type, but found [" + db.getClass() + "].");
         }
-        final ODatabaseDocumentInternal internal = (ODatabaseDocumentInternal) db;
+        final ODatabaseDocumentTx internal = (ODatabaseDocumentTx) db;
         final boolean autotx = "true".equalsIgnoreCase(System.getProperty("graph.autoStartTx", "false"));
         final boolean useLightweightEdges = "true".equalsIgnoreCase(System.getProperty("graph.useLightweightEdges", "false"));
         final com.tinkerpop.blueprints.impls.orient.OrientGraph api = new com.tinkerpop.blueprints.impls.orient.OrientGraph(internal, autotx);
@@ -296,7 +298,6 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
                 final String schemaName = entityMeta.getTable();
                 final OClass schemaClass = database.getMetadata().getSchema().getClass(schemaName);
                 if (schemaClass != null && !schemaClass.getSuperClassesNames().contains(edgeClass.getName())) {
-                    database.command("ALTER CLASS " + schemaName + " SUPERCLASS +" + edgeClass.getName());
                     schemaClass.setSuperClasses(Collections.singletonList(edgeClass));
                     logger.debug("Altering class [" + schemaName + "] with edge superclass.");
                 }

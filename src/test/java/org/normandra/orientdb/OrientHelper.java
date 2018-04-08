@@ -230,7 +230,7 @@ public class OrientHelper implements TestHelper {
 
     private final boolean useLocalServer;
 
-    private final File orientDist = new File("src/test/dist/orientdb-community-importers-3.0.0RC2.zip");
+    private final File orientDist = new File("src/test/dist/orientdb-community-importers-2.2.33.zip");
 
     public OrientHelper() {
         this(true);

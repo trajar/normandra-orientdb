@@ -1,8 +1,7 @@
 package org.normandra.orientdb.data;
 
-import com.orientechnologies.orient.core.db.OrientDB;
-import com.orientechnologies.orient.core.db.OrientDBConfig;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -17,7 +16,7 @@ public class DynamicOrientPool implements OrientPool {
 
     private final Collection<ODatabaseDocument> opened = new CopyOnWriteArraySet<>();
 
-    private final OrientDB orientdb;
+    private final String url;
 
     private final String database;
 
@@ -26,11 +25,7 @@ public class DynamicOrientPool implements OrientPool {
     private final String password;
 
     public DynamicOrientPool(final String url, final String database, final String user, final String pwd) {
-        this(url, user, pwd, database, user, pwd);
-    }
-
-    public DynamicOrientPool(final String url, final String serveruser, final String serverpwd, final String database, final String user, final String pwd) {
-        this.orientdb = new OrientDB(url, serveruser, serverpwd, OrientDBConfig.defaultConfig());
+        this.url = url;
         this.database = database;
         this.username = user;
         this.password = pwd;
@@ -39,10 +34,7 @@ public class DynamicOrientPool implements OrientPool {
     @Override
     public ODatabaseDocument acquire() {
         this.checkOpenedConnections();
-        final ODatabaseDocument session = this.orientdb.open(this.database, this.username, this.password);
-        if (null == session) {
-            return null;
-        }
+        final ODatabaseDocument session = new ODatabaseDocumentTx(OrientUtils.url(url, database)).open(this.username, this.password);
         session.activateOnCurrentThread();
         this.opened.add(session);
         return session;
@@ -58,7 +50,6 @@ public class DynamicOrientPool implements OrientPool {
             }
         }
         this.opened.clear();
-        this.orientdb.close();
     }
 
     synchronized private void checkOpenedConnections() {

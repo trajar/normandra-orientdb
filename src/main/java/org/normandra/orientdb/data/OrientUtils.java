@@ -213,6 +213,18 @@ import java.util.*;
  * Date: 5/15/14
  */
 public class OrientUtils {
+    public static String url(final String url, final String database) {
+        if (null == url) {
+            throw new IllegalStateException();
+        }
+        final String lowercase = url.toLowerCase();
+        if (lowercase.startsWith("plocal:") || lowercase.startsWith("local:") || lowercase.startsWith("embedded:") || lowercase.startsWith("memory:")) {
+            return url;
+        } else {
+            return url + "/" + database;
+        }
+    }
+
     public static Object unpackValue(final ODocument document, final ColumnMeta column) {
         if (null == document || null == column) {
             return null;

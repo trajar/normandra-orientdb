@@ -194,7 +194,7 @@
 
 package org.normandra.orientdb.graph;
 
-import com.orientechnologies.orient.core.sql.executor.OResult;
+import com.orientechnologies.orient.core.record.impl.ODocument;
 import org.apache.commons.lang.NullArgumentException;
 import org.normandra.graph.Edge;
 import org.normandra.graph.EdgeQuery;
@@ -220,7 +220,7 @@ public class OrientEdgeQuery<T> implements EdgeQuery<T> {
 
     @Override
     public Iterator<Edge<T>> iterator() {
-        final Iterator<OResult> itr = this.delegate.iterator();
+        final Iterator<ODocument> itr = this.delegate.iterator();
         return new Iterator<Edge<T>>() {
             @Override
             public boolean hasNext() {

@@ -198,11 +198,9 @@ import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.index.OIndex;
-import com.orientechnologies.orient.core.record.OElement;
-import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.executor.OResult;
-import com.orientechnologies.orient.core.sql.executor.OResultSet;
+import com.orientechnologies.orient.core.sql.query.OSQLQuery;
+import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import com.orientechnologies.orient.core.tx.OTransaction;
 import org.apache.commons.lang.NullArgumentException;
 import org.normandra.*;
@@ -372,15 +370,10 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
             } else {
                 synchronizedQuery = new OrientSelfClosingQuery(this.database, queryOrName, Collections.emptyList());
             }
-            final OResultSet itr = synchronizedQuery.execute();
-            while (itr.hasNext()) {
-                final OResult result = itr.next();
-                if (result.isElement()) {
-                    final ODocument document = (ODocument) result.getElement().get();
-                    final Object[] values = document.fieldValues();
-                    if (values != null && values.length > 0) {
-                        return values[0];
-                    }
+            for (final ODocument document : synchronizedQuery) {
+                final Object[] values = document.fieldValues();
+                if (values != null && values.length > 0) {
+                    return values[0];
                 }
             }
             return null;
@@ -607,42 +600,24 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         }
         query.append("]");
 
-        try (final OResultSet results = this.database.query(query.toString(), parameters.toArray())) {
-            int numMatching = 0;
-            while (results.hasNext()) {
-                final OResult item = results.next();
-                if (item.getElement().isPresent()) {
-                    final OElement element = item.getElement().get();
-                    final OIdentifiable fixed = fixIdentifiable(element);
-                    if (fixed != null) {
-                        return fixed;
-                    }
-                } else if (item.getIdentity().isPresent()) {
-                    final ORID rid = item.getIdentity().get();
-                    final OIdentifiable fetched = this.database.load(rid);
-                    if (fetched != null) {
-                        return fetched;
-                    }
-                } else if (item.getRecord().isPresent()) {
-                    final ORecord record = item.getRecord().get();
-                    final OIdentifiable fixed = fixIdentifiable(record);
-                    if (fixed != null) {
-                        return fixed;
-                    }
-                } else {
-                    final Object rid = item.getProperty("rid");
-                    final OIdentifiable fetched = rid instanceof ORID ? this.database.load((ORID) rid) : null;
-                    if (fetched != null) {
-                        return fetched;
-                    }
-                }
-                numMatching++;
-            }
-            if (numMatching > 0) {
-                throw new IllegalStateException("Found matching index keys but unable to build identifiable record.");
-            }
+        final OSQLQuery q = new OSQLSynchQuery(query.toString());
+        final Iterable items = this.database.query(q, parameters.toArray());
+        if (null == items) {
             return null;
         }
+        int numMatching = 0;
+        for (final Object item : items) {
+            if (item instanceof ODocument) {
+                return fixIdentifiable((ODocument) item);
+            } else if (item instanceof ORID) {
+                return database.load((ORID) item);
+            }
+            numMatching++;
+        }
+        if (numMatching > 0) {
+            throw new IllegalStateException("Found matching index keys but unable to build identifiable record.");
+        }
+        return null;
     }
 
     public final Collection<OIdentifiable> findIdByKeys(final EntityMeta meta, final Set<Object> keys) {

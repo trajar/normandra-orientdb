@@ -196,12 +196,7 @@ package org.normandra.orientdb.graph;
 
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.record.OEdge;
-import com.orientechnologies.orient.core.record.OElement;
-import com.orientechnologies.orient.core.record.ORecord;
-import com.orientechnologies.orient.core.record.OVertex;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.executor.OResult;
 import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import org.normandra.NormandraException;
@@ -533,47 +528,19 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         return null;
     }
 
-    final <T> OrientNode<T> buildNode(final OResult result) {
-        return buildNode(null, result);
-    }
-
-    final <T> OrientNode<T> buildNode(EntityMeta meta, final OResult result) {
-        if (null == result) {
-            return null;
-        }
-
-        if (result.isElement()) {
-            final OElement element = result.getElement().get();
-            if (element instanceof OVertex) {
-                final OVertex vertex = (OVertex) element;
-                if (null == meta) {
-                    meta = findNodeMetaBySchema(element.getSchemaType());
-                }
-                final ORecord record = vertex.getRecord();
-                final ODocument document = this.graph.getRawGraph().load(record);
-                final Object key = OrientUtils.unpackKey(meta, document);
-                return buildNode(meta, key, this.graph.getVertex(document), new OrientEntityReference<>(this, meta, record.getIdentity()));
-            }
-        }
-
-        if (result.isRecord()) {
-            final ORecord record = result.getRecord().get();
-            final ODocument document = this.graph.getRawGraph().load(record);
-            if (null == meta) {
-                meta = findNodeMetaBySchema(document.getSchemaType());
-            }
-            return buildNode(meta, document, new OrientEntityReference<>(this, meta, record.getIdentity()));
-        }
-
-        throw new IllegalStateException();
-    }
-
-    final <T> OrientNode<T> buildNode(final EntityMeta meta, final ODocument document, final EntityReference<T> data) {
+    final <T> OrientNode<T> buildNode(final ODocument document) {
         if (null == document) {
             return null;
         }
 
+        final String type = document.getSchemaClass().getName();
+        final EntityMeta meta = this.meta.getNodeMeta(type);
+        if (null == meta) {
+            throw new IllegalStateException("Unable to find meta for type [" + type + "].");
+        }
+
         final Object key = OrientUtils.unpackKey(meta, document);
+        final EntityReference data = new OrientEntityReference(this, meta, document);
         return this.buildNode(meta, key, new com.tinkerpop.blueprints.impls.orient.OrientVertex(this.graph, document), data);
     }
 
@@ -592,40 +559,20 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         return orientNode;
     }
 
-    final <T> OrientEdge<T> buildEdge(final OResult result) {
-        return buildEdge(null, result);
-    }
-
-    final <T> OrientEdge<T> buildEdge(EntityMeta meta, final OResult result) {
-        if (null == result) {
+    final <T> OrientEdge<T> buildEdge(final ODocument document) {
+        if (null == document) {
             return null;
         }
 
-        if (result.isElement()) {
-            final OElement element = result.getElement().get();
-            if (null == meta) {
-                meta = findEdgeMetaBySchema(element.getSchemaType());
-            }
-            if (element instanceof OEdge) {
-                final OEdge edge = (OEdge) element;
-                final ORecord record = edge.getRecord();
-                final ODocument document = this.graph.getRawGraph().load(record);
-                final Object key = OrientUtils.unpackKey(meta, document);
-                return buildEdge(meta, key, this.graph.getEdge(document), new OrientEntityReference<>(this, meta, record.getIdentity()));
-            }
+        final String type = document.getSchemaClass().getName();
+        final EntityMeta meta = this.meta.getEdgeMeta(type);
+        if (null == meta) {
+            throw new IllegalStateException("Unable to find meta for type [" + type + "].");
         }
 
-        if (result.isRecord()) {
-            final ORecord record = result.getRecord().get();
-            final ODocument document = this.graph.getRawGraph().load(record);
-            if (null == meta) {
-                meta = findNodeMetaBySchema(document.getSchemaType());
-            }
-            final Object key = OrientUtils.unpackKey(meta, document);
-            return buildEdge(meta, key, this.graph.getEdge(document), new OrientEntityReference<>(this, meta, record.getIdentity()));
-        }
-
-        throw new IllegalStateException();
+        final Object key = OrientUtils.unpackKey(meta, document);
+        final EntityReference data = new OrientEntityReference(this, meta, document);
+        return this.buildEdge(meta, key, this.graph.getEdge(document), data);
     }
 
     final <T> OrientEdge<T> buildEdge(final EntityMeta meta, final Object key, final com.tinkerpop.blueprints.impls.orient.OrientEdge edge, final EntityReference<T> data) {

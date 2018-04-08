@@ -195,10 +195,8 @@
 package org.normandra.orientdb.data;
 
 import com.orientechnologies.orient.core.Orient;
-import com.orientechnologies.orient.core.db.ODatabaseType;
-import com.orientechnologies.orient.core.db.OrientDB;
-import com.orientechnologies.orient.core.db.OrientDBConfig;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -212,13 +210,11 @@ public class LocalFileOrientPool implements OrientPool {
 
     private final String url;
 
-    private final String user;
+    private final String username;
 
     private final String password;
 
     private final String database;
-
-    private OrientDB orientdb = null;
 
     private final Set<ODatabaseDocument> opened = new HashSet<>();
 
@@ -232,7 +228,7 @@ public class LocalFileOrientPool implements OrientPool {
 
     public LocalFileOrientPool(final String url, final String database, final String user, final String pwd) {
         this.url = url;
-        this.user = user;
+        this.username = user;
         this.password = pwd;
         this.database = database;
         this.timer = new Timer(this.getClass().getName() + "-Timer", true);
@@ -240,20 +236,12 @@ public class LocalFileOrientPool implements OrientPool {
 
     @Override
     synchronized public ODatabaseDocument acquire() {
-        if (null == this.orientdb || (this.opened.isEmpty() && this.timerDelay > 0)) {
+        if (this.opened.isEmpty() && this.timerDelay > 0) {
             Orient.instance().startup();
-            this.orientdb = new OrientDB(this.url, OrientDBConfig.defaultConfig());
-            logger.debug("Creating orientdb instance for [" + this.url + "] ...");
-        }
-
-        // ensure database exists
-        if (!this.orientdb.exists(this.database)) {
-            logger.debug("Creating local file database [" + this.database + "] ...");
-            this.orientdb.create(this.database, ODatabaseType.PLOCAL);
         }
 
         // create new connection
-        final ODatabaseDocument db = this.orientdb.open(this.database, this.user, this.password);
+        final ODatabaseDocument db = new ODatabaseDocumentTx(OrientUtils.url(url, database)).open(this.username, this.password);
         db.activateOnCurrentThread();
         this.opened.add(db);
 
@@ -283,13 +271,9 @@ public class LocalFileOrientPool implements OrientPool {
 
     @Override
     synchronized public void close() {
-        this.opened.clear();
         this.timer.cancel();
-        if (this.orientdb != null) {
-            this.orientdb.close();
-            this.orientdb = null;
-            Orient.instance().shutdown();
-        }
+        this.opened.clear();
+        Orient.instance().shutdown();
     }
 
     private class CloseDatabaseTask extends TimerTask {

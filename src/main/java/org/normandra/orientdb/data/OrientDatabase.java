@@ -199,6 +199,7 @@ import com.orientechnologies.orient.core.index.OIndex;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OProperty;
 import com.orientechnologies.orient.core.metadata.schema.OType;
+import com.orientechnologies.orient.core.sql.OCommandSQL;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.NullArgumentException;
 import org.apache.commons.lang3.StringUtils;
@@ -411,11 +412,11 @@ public class OrientDatabase implements Database {
                 // drop table as required
                 if (DatabaseConstruction.RECREATE.equals(this.constructionMode)) {
                     if (hasCluster(database, tableName)) {
-                        database.command("DELETE FROM " + tableName);
+                        database.command(new OCommandSQL("DELETE FROM " + tableName)).execute();
                         database.getMetadata().getSchema().dropClass(tableName);
                     }
                     if (hasIndex(database, indexName)) {
-                        database.command("DROP INDEX " + indexName);
+                        database.command(new OCommandSQL("DROP INDEX " + indexName)).execute();
                         database.getMetadata().getIndexManager().dropIndex(indexName);
                     }
                 }
@@ -447,10 +448,10 @@ public class OrientDatabase implements Database {
         if (DatabaseConstruction.RECREATE.equals(this.constructionMode)) {
             // drop schema
             if (hasClass(database, schemaName)) {
-                database.command("DELETE FROM " + schemaName + " UNSAFE");
+                database.command(new OCommandSQL("DELETE FROM " + schemaName + " UNSAFE")).execute();
             }
             if (hasIndex(database, keyIndex)) {
-                database.command("DROP INDEX " + keyIndex);
+                database.command(new OCommandSQL("DROP INDEX " + keyIndex)).execute();
             }
             for (final IndexMeta index : entity.getIndexed()) {
                 final String indexName;
@@ -461,7 +462,7 @@ public class OrientDatabase implements Database {
                     indexName = schemaName + "." + index.getName();
                 }
                 if (hasIndex(database, indexName)) {
-                    database.command("DROP INDEX " + indexName);
+                    database.command(new OCommandSQL("DROP INDEX " + indexName)).execute();
                 }
             }
         }
@@ -488,7 +489,7 @@ public class OrientDatabase implements Database {
                     .collect(Collectors.toList());
             if (!names.isEmpty()) {
                 logger.debug("Adding primary id index [" + keyIndex + "] with " + names + " ...");
-                database.command("CREATE INDEX " + keyIndex + " ON " + schemaName + " (" + StringUtils.join(names, ",") + ") UNIQUE");
+                database.command(new OCommandSQL("CREATE INDEX " + keyIndex + " ON " + schemaName + " (" + StringUtils.join(names, ",") + ") UNIQUE")).execute();
             }
         }
         for (final IndexMeta index : entity.getIndexed()) {
@@ -497,7 +498,7 @@ public class OrientDatabase implements Database {
             final String indexName = schemaName + "." + index.getName();
             if (!names.isEmpty() && !hasIndex(database, indexName)) {
                 logger.debug("Adding property index [" + indexName + "] with " + names + " (" + uniqueness + ") ...");
-                database.command("CREATE INDEX " + indexName + " ON " + schemaName + " (" + StringUtils.join(names, ",") + ") " + uniqueness);
+                database.command(new OCommandSQL("CREATE INDEX " + indexName + " ON " + schemaName + " (" + StringUtils.join(names, ",") + ") " + uniqueness)).execute();
             }
         }
     }

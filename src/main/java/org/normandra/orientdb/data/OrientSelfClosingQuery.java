@@ -1,9 +1,15 @@
 package org.normandra.orientdb.data;
 
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.sql.executor.OResult;
-import com.orientechnologies.orient.core.sql.executor.OResultSet;
+import com.orientechnologies.orient.core.db.record.OIdentifiable;
+import com.orientechnologies.orient.core.id.ORID;
+import com.orientechnologies.orient.core.record.ORecord;
+import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.sql.query.OSQLQuery;
+import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import org.apache.commons.lang.NullArgumentException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -11,10 +17,10 @@ import java.util.*;
 
 /**
  * a query that auto-closes the query result set
- *
- * @date 3/13/18.
  */
-public class OrientSelfClosingQuery implements Iterable<OResult>, Closeable, AutoCloseable {
+public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, AutoCloseable {
+    private static final Logger logger = LoggerFactory.getLogger(OrientSelfClosingQuery.class);
+
     private final ODatabaseDocument database;
 
     private final String query;
@@ -23,7 +29,7 @@ public class OrientSelfClosingQuery implements Iterable<OResult>, Closeable, Aut
 
     private final Map<String, Object> parameterMap;
 
-    private OResultSet results = null;
+    private Iterator<?> results = null;
 
     public OrientSelfClosingQuery(final ODatabaseDocument db, final String query) {
         this(db, query, Collections.emptyList());
@@ -65,51 +71,94 @@ public class OrientSelfClosingQuery implements Iterable<OResult>, Closeable, Aut
 
     @Override
     public void close() throws IOException {
-        this.closeResults();
+        try {
+            this.closeResults();
+        } catch (Exception e) {
+            throw new IOException("Unable to close results.");
+        }
     }
 
-    synchronized public OResultSet execute() {
-        this.closeResults();
-        if (!parameterList.isEmpty()) {
-            this.results = database.query(this.query, this.parameterList.toArray());
-        } else if (!parameterMap.isEmpty()) {
-            this.results = database.query(this.query, this.parameterMap);
-        } else {
-            this.results = database.query(this.query);
+    synchronized private Iterator<?> execute() {
+        try {
+            this.closeResults();
+        } catch (Exception e) {
+            logger.warn("Unable to close previous query results.", e);
         }
+        final OSQLQuery q = new OSQLSynchQuery(this.query);
+        final Iterable<?> items;
+        if (!parameterList.isEmpty()) {
+            items = database.query(q, this.parameterList.toArray());
+        } else if (!parameterMap.isEmpty()) {
+            items = database.query(q, this.parameterMap);
+        } else {
+            items = database.query(q);
+        }
+        this.results = items.iterator();
         return this.results;
     }
 
-    synchronized private void closeResults() {
+    synchronized private void closeResults() throws Exception {
         if (this.results != null) {
-            this.results.close();
+            closeElement(this.results);
             this.results = null;
         }
     }
 
+    private static void closeElement(final Object obj) throws Exception {
+        if (null == obj) {
+            return;
+        }
+        if (obj instanceof Closeable) {
+            ((Closeable) obj).close();
+        }
+        if (obj instanceof AutoCloseable) {
+            ((AutoCloseable) obj).close();
+        }
+    }
+
     @Override
-    public Iterator<OResult> iterator() {
+    public Iterator<ODocument> iterator() {
         // execute query
-        final OResultSet results = this.execute();
+        final Iterator<?> results = this.execute();
         if (null == results) {
             return Collections.emptyIterator();
         }
 
         // wrap with closing iterator
-        return new Iterator<OResult>() {
+        return new Iterator<ODocument>() {
             @Override
             public boolean hasNext() {
                 if (results.hasNext()) {
                     return true;
                 } else {
-                    results.close();
+                    try {
+                        closeElement(results);
+                    } catch (Exception e) {
+                        logger.warn("Unable to close results.", e);
+                    }
                     return false;
                 }
             }
 
             @Override
-            public OResult next() {
-                return results.next();
+            public ODocument next() {
+                final Object obj = results.next();
+                if (null == obj) {
+                    return null;
+                }
+                if (obj instanceof ODocument) {
+                    return (ODocument) obj;
+                }
+                if (obj instanceof ORecord) {
+                    return database.load((ORecord) obj);
+                }
+                if (obj instanceof OIdentifiable) {
+                    return database.load(((OIdentifiable) obj).getIdentity());
+                }
+                if (obj instanceof ORID) {
+                    return database.load((ORID) obj);
+                }
+                throw new IllegalStateException("Unexpected document type [" + obj.getClass() + "].");
             }
         };
     }

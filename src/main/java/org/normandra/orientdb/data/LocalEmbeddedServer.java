@@ -9,6 +9,8 @@ import org.apache.commons.lang3.SystemUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.conn.HttpHostConnectException;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -148,7 +150,8 @@ public class LocalEmbeddedServer {
 
     public boolean isRunning() {
         try {
-            final Map<String, ?> status = this.queryStatus();
+            final String http = this.getHttpUrl() + "/server";
+            final Map<String, ?> status = this.executeJsonServerRequest(new HttpGet(http));
             if (null == status || status.isEmpty()) {
                 logger.warn("Found empty status, server not likely ready.");
                 return false;
@@ -166,23 +169,43 @@ public class LocalEmbeddedServer {
         return false;
     }
 
+    public Map<String, ?> getDatabase(final String dbname) throws IOException {
+        final String http = this.getHttpUrl() + "/database/" + dbname;
+        return this.executeJsonServerRequest(new HttpGet(http));
+    }
+
+    public boolean createDatabase(final String dbname) throws IOException {
+        return this.createDatabase(dbname, "plocal");
+    }
+
+    public boolean createDatabase(final String dbname, final String type) throws IOException {
+        if (null == dbname || dbname.isEmpty()) {
+            return false;
+        }
+        final String http = this.getHttpUrl() + "/database/" + dbname + "/" + type;
+        final Map<String, ?> response = this.executeJsonServerRequest(new HttpPost(http));
+        if (null == response || response.isEmpty()) {
+            return false;
+        }
+        return true;
+    }
+
     public String getBinaryUrl() {
         return "remote:localhost";
     }
 
     public String getHttpUrl() {
-        return "http://localhost:" + this.getHttpPort() + "/server";
+        return "http://localhost:" + this.getHttpPort();
     }
 
-    private Map<String, ?> queryStatus() throws IOException {
+    private Map<String, ?> executeJsonServerRequest(final HttpUriRequest request) throws IOException {
         final CloseableHttpClient httpclient = HttpClients.createDefault();
-        final HttpGet httpget = new HttpGet(this.getHttpUrl());
         final byte[] creds = (this.serverUser + ":" + this.serverPwd).getBytes(Charset.forName("UTF-8"));
-        httpget.setHeader("Authorization", "Basic " + Base64.getEncoder().encodeToString(creds));
-        httpget.setHeader("Accept-Encoding", "gzip,deflate");
-        httpget.setHeader("Accept", "text/html,application/json");
+        request.setHeader("Authorization", "Basic " + Base64.getEncoder().encodeToString(creds));
+        request.setHeader("Accept-Encoding", "gzip,deflate");
+        request.setHeader("Accept", "text/html,application/json");
         try {
-            final CloseableHttpResponse response = httpclient.execute(httpget);
+            final CloseableHttpResponse response = httpclient.execute(request);
             if (response.getStatusLine().getStatusCode() == 401) {
                 throw new IllegalStateException("Unable to query server, received 401 status from [" + this.getHttpUrl() + "].");
             }
