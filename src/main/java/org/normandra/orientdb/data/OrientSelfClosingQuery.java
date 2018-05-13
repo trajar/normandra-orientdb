@@ -125,6 +125,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
 
         this.consumerThread = new Thread(worker);
         this.consumerThread.setName(this.getClass().getSimpleName() + "-Listener");
+        this.consumerThread.setDaemon(true);
         this.consumerThread.setUncaughtExceptionHandler((t, e) -> listener.offerElement(e));
         this.consumerThread.start();
 
@@ -151,8 +152,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
         }
         if (obj instanceof Closeable) {
             ((Closeable) obj).close();
-        }
-        if (obj instanceof AutoCloseable) {
+        } else if (obj instanceof AutoCloseable) {
             ((AutoCloseable) obj).close();
         }
     }
@@ -194,10 +194,6 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
                 final Object obj = results.next();
                 if (null == obj) {
                     return null;
-                }
-
-                if (obj instanceof Throwable) {
-                    throw new IllegalStateException("Unable to get next element from query.", (Throwable) obj);
                 }
 
                 if (obj instanceof ODocument) {
@@ -262,7 +258,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
             return this.offerElement(new EndOfServiceElement());
         }
 
-        synchronized public boolean isDone() {
+        synchronized private boolean isDone() {
             return this.done;
         }
 
@@ -280,6 +276,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
                 }
                 if (maxWaitMs > 0 && System.currentTimeMillis() - fetchStartMs > maxWaitMs) {
                     logger.debug("Waited more than [" + maxWaitMs + "] msec to add item to queue - offer aborted.");
+                    return false;
                 }
             }
             return false;
@@ -288,7 +285,9 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
         @Override
         public boolean hasNext() {
             if (this.needsFetch) {
-                this.fetch();
+                if (!this.fetch()) {
+                    return false;
+                }
             }
 
             return this.next != null;
@@ -297,7 +296,9 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
         @Override
         public Object next() {
             if (this.needsFetch) {
-                this.fetch();
+                if (!this.fetch()) {
+                    return null;
+                }
             }
 
             final Object document = this.next;
@@ -318,14 +319,15 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
                         this.next = null;
                         this.needsFetch = false;
                         return false;
+                    } else if (item instanceof Throwable) {
+                        throw new IllegalStateException("Unable to get next element from query.", (Throwable) item);
                     } else if (item != null) {
                         this.next = item;
                         this.needsFetch = false;
                         return true;
                     } else if (maxWaitMs > 0 && System.currentTimeMillis() - fetchStartMs > maxWaitMs) {
                         logger.debug("Waited more than [" + maxWaitMs + "] msec for item from queue - fetch aborted.");
-                        this.next = null;
-                        this.needsFetch = true;
+                        return false;
                     }
                 } catch (final InterruptedException e) {
                     logger.debug("Unable to poll non-blocking queue.", e);
