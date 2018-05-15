@@ -353,7 +353,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
         try {
             return Long.parseLong(prop);
         } catch (final Exception e) {
-            throw new IllegalStateException("Unable to parse close delay value of [" + prop + "].", e);
+            throw new IllegalStateException("Unable to parse timeout value of [" + prop + "].", e);
         }
     }
 }

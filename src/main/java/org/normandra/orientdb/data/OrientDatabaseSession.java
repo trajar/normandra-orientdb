@@ -416,7 +416,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         try {
             return this.findIdByKey(meta, key) != null;
         } catch (final Exception e) {
-            throw new NormandraException("Unable to delete orientdb document.", e);
+            throw new NormandraException("Unable to query orientdb document.", e);
         }
     }
 
@@ -446,12 +446,12 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
             final ODocument document = this.findDocument(rid);
             if (document != null) {
                 data.putAll(OrientUtils.unpackValues(meta, document));
-            }
-            if (meta.validate(data)) {
-                final EntityBuilder builder = new EntityBuilder(this, new OrientDataFactory(this));
-                final Object instance = builder.build(meta, data);
-                this.cache.put(meta, key, instance);
-                return instance;
+                if (meta.validate(data)) {
+                    final EntityBuilder builder = new EntityBuilder(this, new OrientDataFactory(this));
+                    final Object instance = builder.build(meta, data);
+                    this.cache.put(meta, key, instance);
+                    return instance;
+                }
             }
         } catch (final Exception e) {
             throw new NormandraException("Unable to get orientdb document by key [" + key + "].", e);
@@ -473,25 +473,31 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         // query meta
         final Set<Object> keyset = new HashSet<>(Arrays.asList(keys));
         final Map<Object, Object> cached = this.cache.find(meta, Arrays.asList(keys), Object.class);
+        final List<Object> cachedElements;
         keyset.removeAll(cached.keySet());
-        final List<Object> cachedElements = cached.values().stream()
-                .map((x) -> {
-                    try {
-                        if (x instanceof OrientNode) {
-                            return ((OrientNode) x).getEntity();
-                        } else if (x instanceof OrientEdge) {
-                            return ((OrientEdge) x).getEntity();
-                        } else {
-                            return x;
+        try {
+            cachedElements = cached.values().stream()
+                    .map((x) -> {
+                        try {
+                            if (x instanceof OrientNode) {
+                                return ((OrientNode) x).getEntity();
+                            } else if (x instanceof OrientEdge) {
+                                return ((OrientEdge) x).getEntity();
+                            } else {
+                                return x;
+                            }
+                        } catch (final NormandraException e) {
+                            throw new IllegalStateException("Unable to unpack entities.", e);
                         }
-                    } catch (final NormandraException e) {
-                        throw new IllegalStateException("Unable to unpack entities.", e);
-                    }
-                })
-                .collect(Collectors.toList());
-        if (keyset.isEmpty()) {
-            return Collections.unmodifiableList(cachedElements);
+                    })
+                    .collect(Collectors.toList());
+            if (keyset.isEmpty()) {
+                return Collections.unmodifiableList(cachedElements);
+            }
+        } catch (final Exception e) {
+            throw new NormandraException("Unable to map and unpack entities.", e);
         }
+
 
         // query ids for each entity meta
         final Map<Object, Map<ColumnMeta, Object>> entityData = new HashMap<>();
@@ -550,11 +556,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
             return null;
         }
 
-        final ODocument document = this.database.load(rid);
-        if (null == document) {
-            throw new IllegalStateException("Unable to load orientdb record id [" + rid + "].");
-        }
-        return document;
+        return this.database.load(rid);
     }
 
     public OIdentifiable findIdByMap(final EntityMeta table, final Map<ColumnMeta, Object> keys) {

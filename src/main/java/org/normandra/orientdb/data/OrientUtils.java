@@ -215,7 +215,7 @@ import java.util.*;
 public class OrientUtils {
     public static String url(final String url, final String database) {
         if (null == url) {
-            throw new IllegalStateException();
+            throw new IllegalArgumentException();
         }
         final String lowercase = url.toLowerCase();
         if (lowercase.startsWith("plocal:") || lowercase.startsWith("local:") || lowercase.startsWith("embedded:") || lowercase.startsWith("memory:")) {
