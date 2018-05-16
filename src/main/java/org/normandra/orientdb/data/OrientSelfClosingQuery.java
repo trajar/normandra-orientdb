@@ -15,15 +15,23 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * a query that auto-closes the query result set
  */
 public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(OrientSelfClosingQuery.class);
+
+    private static final Executor executor = Executors.newCachedThreadPool(new ThreadFactory() {
+        @Override
+        public Thread newThread(Runnable r) {
+            final Thread thread = new Thread(r);
+            thread.setName(OrientSelfClosingQuery.class.getSimpleName() + "-Listener");
+            thread.setDaemon(true);
+            return thread;
+        }
+    });
 
     private final ODatabaseDocument database;
 
@@ -34,8 +42,6 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
     private final Map<String, Object> parameterMap;
 
     private OrientNonBlockingListener results = null;
-
-    private Thread consumerThread = null;
 
     private boolean closed = false;
 
@@ -112,22 +118,22 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
 
         final OrientNonBlockingListener listener = new OrientNonBlockingListener();
         final Runnable worker = () -> {
-            database.activateOnCurrentThread();
-            final OSQLQuery q = new OSQLAsynchQuery(query, listener);
-            if (!parameterList.isEmpty()) {
-                database.query(q, parameterList.toArray());
-            } else if (!parameterMap.isEmpty()) {
-                database.query(q, parameterMap);
-            } else {
-                database.query(q);
+            try {
+                database.activateOnCurrentThread();
+                final OSQLQuery q = new OSQLAsynchQuery(query, listener);
+                if (!parameterList.isEmpty()) {
+                    database.query(q, parameterList.toArray());
+                } else if (!parameterMap.isEmpty()) {
+                    database.query(q, parameterMap);
+                } else {
+                    database.query(q);
+                }
+            } catch (final Exception e) {
+                logger.error("Error during asynch query in listener thread.", e);
+                listener.offerElement(e);
             }
         };
-
-        this.consumerThread = new Thread(worker);
-        this.consumerThread.setName(this.getClass().getSimpleName() + "-Listener");
-        this.consumerThread.setDaemon(true);
-        this.consumerThread.setUncaughtExceptionHandler((t, e) -> listener.offerElement(e));
-        this.consumerThread.start();
+        executor.execute(worker);
 
         this.results = listener;
         return this.results;
@@ -137,12 +143,6 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
         if (this.results != null) {
             closeElement(this.results);
             this.results = null;
-        }
-        if (this.consumerThread != null) {
-            if (this.consumerThread.isAlive()) {
-                this.consumerThread.interrupt();
-            }
-            this.consumerThread = null;
         }
     }
 
@@ -212,7 +212,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
     }
 
     private class OrientNonBlockingListener implements OCommandResultListener, Iterator<Object>, Closeable {
-        private final BlockingQueue<Object> queue = new ArrayBlockingQueue<>(250);
+        private final BlockingQueue<Object> queue = new ArrayBlockingQueue<>(50);
 
         private Object next = null;
 
@@ -226,7 +226,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
                 return false;
             }
 
-            if (isClosed()) {
+            if (isClosed() || isDone()) {
                 return false;
             }
 
@@ -262,7 +262,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
             return this.done;
         }
 
-        private boolean offerElement(final Object item) {
+        public boolean offerElement(final Object item) {
             final long fetchStartMs = System.currentTimeMillis();
             final long maxWaitMs = getTimeOutDelay();
             while (!isClosed() && !isDone()) {
@@ -347,7 +347,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
     private static long getTimeOutDelay() {
         final String prop = System.getProperty("query.nonBlocking.timeOut");
         if (null == prop || prop.trim().isEmpty()) {
-            return 1000 * 60;
+            return -1;
         }
 
         try {
