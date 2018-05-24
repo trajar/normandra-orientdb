@@ -233,7 +233,7 @@ public class OrientHelper implements TestHelper {
     private final File orientDist = new File("src/test/dist/orientdb-community-importers-2.2.34.zip");
 
     public OrientHelper() {
-        this(true);
+        this(false);
     }
 
     public OrientHelper(final boolean serverMode) {
@@ -302,7 +302,6 @@ public class OrientHelper implements TestHelper {
             }
         }
         dir.mkdirs();
-        new File(dir, databaseName).mkdirs();
     }
 
     @Override

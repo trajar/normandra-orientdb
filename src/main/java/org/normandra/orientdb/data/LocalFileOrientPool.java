@@ -195,11 +195,14 @@
 package org.normandra.orientdb.data;
 
 import com.orientechnologies.orient.core.Orient;
+import com.orientechnologies.orient.core.db.ODatabase;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.*;
 
 /**
@@ -222,6 +225,8 @@ public class LocalFileOrientPool implements OrientPool {
 
     private final long timerDelay = getTimeOutDelay();
 
+    private boolean first = true;
+
     public LocalFileOrientPool(final String url, final String database) {
         this(url, database, null, null);
     }
@@ -238,6 +243,25 @@ public class LocalFileOrientPool implements OrientPool {
     synchronized public ODatabaseDocument acquire() {
         if (this.opened.isEmpty() && this.timerDelay > 0) {
             Orient.instance().startup();
+        }
+
+        if (this.first) {
+            // initialize directory structure as necessary
+            final int index = this.url.indexOf(":");
+            final File path = new File(this.url.substring(index + 1));
+            try {
+                if (!path.exists()) {
+                    FileUtils.forceMkdir(path);
+                }
+                if (path.list() == null || path.list().length <= 0) {
+                    try (final ODatabase db = new ODatabaseDocumentTx(this.url, false)) {
+                        db.create();
+                    }
+                }
+            } catch (final Exception e) {
+                throw new IllegalStateException("Unable to create local directory structure.", e);
+            }
+            this.first = false;
         }
 
         // create new connection
