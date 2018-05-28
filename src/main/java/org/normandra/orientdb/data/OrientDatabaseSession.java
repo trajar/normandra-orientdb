@@ -603,7 +603,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         query.append("]");
 
         final OSQLQuery q = new OSQLSynchQuery(query.toString());
-        final Iterable items = this.database.query(q, parameters.toArray());
+        final Iterable items = parameters.size() == 1 ? this.database.query(q, parameters.get(0)) : this.database.query(q, parameters.toArray());
         if (null == items) {
             return null;
         }
