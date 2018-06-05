@@ -297,7 +297,9 @@ public class LocalFileOrientPool implements OrientPool {
     synchronized public void close() {
         this.timer.cancel();
         this.opened.clear();
-        Orient.instance().shutdown();
+        if (this.timerDelay > 0) {
+            Orient.instance().shutdown();
+        }
     }
 
     private class CloseDatabaseTask extends TimerTask {

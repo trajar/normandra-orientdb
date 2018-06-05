@@ -243,7 +243,7 @@ public class OrientDataHandler implements DataHandler {
             return false;
         }
 
-        if (data.isEmpty() || keymap.isEmpty()) {
+        if (data.isEmpty()) {
             this.documents.remove(document);
             document.delete();
             return true;
