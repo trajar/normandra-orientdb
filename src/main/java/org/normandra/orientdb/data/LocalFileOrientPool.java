@@ -250,10 +250,8 @@ public class LocalFileOrientPool implements OrientPool {
             final int index = this.url.indexOf(":");
             final File path = new File(this.url.substring(index + 1));
             try {
-                if (!path.exists()) {
+                if (!path.exists() || path.list().length <= 0) {
                     FileUtils.forceMkdir(path);
-                }
-                if (path.list() == null || path.list().length <= 0) {
                     try (final ODatabase db = new ODatabaseDocumentTx(this.url, false)) {
                         db.create();
                     }
