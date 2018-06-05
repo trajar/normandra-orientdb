@@ -300,7 +300,6 @@ public class OrientNode<T> implements Node<T> {
             return null;
         }
 
-        final Object key = meta.getId().fromEntity(entity);
         final EntityMeta meta = this.graph.getMeta().getEdgeMeta(entity.getClass());
         if (null == meta) {
             return null;
@@ -323,6 +322,7 @@ public class OrientNode<T> implements Node<T> {
             throw new NormandraException("Unable to add edge [" + entity + "].", e);
         }
 
+        final Object key = meta.getId().fromEntity(entity);
         final EntityReference<E> reference = new StaticEntityReference<>(entity);
         return this.graph.buildEdge(meta, key, edge, reference);
     }

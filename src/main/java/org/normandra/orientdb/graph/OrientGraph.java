@@ -251,7 +251,6 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         }
 
         // get entity context
-        final Object key = meta.getId().fromEntity(instance);
         if (!this.meta.isNodeEntity(meta)) {
             throw new IllegalArgumentException("Entity [" + meta + "] is not a registered node type.");
         }
@@ -274,6 +273,7 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         }
 
         final EntityReference reference = new StaticEntityReference<>(instance);
+        final Object key = meta.getId().fromEntity(instance);
         final OrientNode node = this.buildNode(meta, key, vertex, reference);
         return node;
     }
