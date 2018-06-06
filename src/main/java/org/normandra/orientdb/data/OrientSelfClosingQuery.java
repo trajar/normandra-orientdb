@@ -1,7 +1,10 @@
 package org.normandra.orientdb.data;
 
 import com.orientechnologies.orient.core.command.OCommandResultListener;
+import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
+import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.record.ORecord;
@@ -116,21 +119,36 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
             logger.warn("Unable to close previous query results.", e);
         }
 
+        final ODatabaseDocumentInternal currentThreadLocal = ODatabaseRecordThreadLocal.instance().getIfDefined();
+        final ODatabaseDocumentInternal db = ((ODatabaseDocumentTx) database).copy();
+        if (currentThreadLocal != null) {
+            currentThreadLocal.activateOnCurrentThread();
+        } else {
+            ODatabaseRecordThreadLocal.instance().set(null);
+        }
+
         final OrientNonBlockingListener listener = new OrientNonBlockingListener();
         final Runnable worker = () -> {
             try {
-                database.activateOnCurrentThread();
+                db.activateOnCurrentThread();
                 final OSQLQuery q = new OSQLAsynchQuery(query, listener);
                 if (!parameterList.isEmpty()) {
-                    database.query(q, parameterList.toArray());
+                    db.query(q, parameterList.toArray());
                 } else if (!parameterMap.isEmpty()) {
-                    database.query(q, parameterMap);
+                    db.query(q, parameterMap);
                 } else {
-                    database.query(q);
+                    db.query(q);
                 }
             } catch (final Exception e) {
                 logger.error("Error during asynch query in listener thread.", e);
                 listener.offerElement(e);
+            } finally {
+                try {
+                    db.close();
+                } catch (Exception e) {
+                    logger.error("Unable to close database instance.", e);
+                    listener.offerElement(e);
+                }
             }
         };
         executor.execute(worker);
