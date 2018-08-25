@@ -19,6 +19,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 /**
  * a query that auto-closes the query result set
@@ -133,9 +134,16 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
                 db.activateOnCurrentThread();
                 final OSQLQuery q = new OSQLAsynchQuery(query, listener);
                 if (!parameterList.isEmpty()) {
-                    db.query(q, parameterList.toArray());
+                    final List<Object> packed = parameterList.stream()
+                            .map(OrientUtils::packPrimitive)
+                            .collect(Collectors.toList());
+                    db.query(q, packed.toArray());
                 } else if (!parameterMap.isEmpty()) {
-                    db.query(q, parameterMap);
+                    final Map<String, Object> packed = new LinkedHashMap<>();
+                    for (final Map.Entry<String, Object> entry : parameterMap.entrySet()) {
+                        packed.put(entry.getKey(), OrientUtils.packPrimitive(entry.getValue()));
+                    }
+                    db.query(q, packed);
                 } else {
                     db.query(q);
                 }

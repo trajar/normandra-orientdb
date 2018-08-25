@@ -206,6 +206,7 @@ import org.normandra.util.DataUtils;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * collection of common orient utilities
@@ -324,6 +325,9 @@ public class OrientUtils {
         if (value instanceof ORecordLazyList) {
             return value;
         }
+        if (column.isJson()) {
+            return DataUtils.objectToJson(value);
+        }
 
         final Class<?> clazz = column.getType();
 
@@ -331,7 +335,7 @@ public class OrientUtils {
             final Collection list = (Collection) value;
             final List<Object> packed = new ArrayList<>(list.size());
             for (final Object item : list) {
-                final Object pack = packPrimitive(column, item);
+                final Object pack = packPrimitive(item);
                 packed.add(pack);
             }
             if (List.class.isAssignableFrom(clazz)) {
@@ -341,7 +345,7 @@ public class OrientUtils {
             }
         }
 
-        return packPrimitive(column, value);
+        return packPrimitive(value);
     }
 
     private static Object unpackPrimitive(final ColumnMeta column, final Class<?> clazz, final Object value) {
@@ -382,7 +386,7 @@ public class OrientUtils {
         return value;
     }
 
-    private static Object packPrimitive(final ColumnMeta column, final Object value) {
+    public static Object packPrimitive(final Object value) {
         if (null == value) {
             return null;
         }
@@ -421,11 +425,14 @@ public class OrientUtils {
                 throw new IllegalArgumentException("Unexpected numeric type [" + value + "].");
             }
         }
+        if (value instanceof Collection) {
+            final Collection unpacked = (Collection) value;
+            return unpacked.stream()
+                    .map((x) -> packPrimitive(x))
+                    .collect(Collectors.toList());
+        }
         if (byte[].class.equals(value.getClass())) {
             return value;
-        }
-        if (column.isJson()) {
-            return DataUtils.objectToJson(value);
         }
         if (value instanceof Serializable) {
             return DataUtils.objectToBytes((Serializable) value);
