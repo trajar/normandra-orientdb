@@ -62,7 +62,7 @@ public class LocalEmbeddedServer {
     }
 
     public LocalEmbeddedServer(final File orientDir, final String serverUser, final String serverPwd) {
-        this(orientDir, serverUser, serverPwd, false);
+        this(orientDir, serverUser, serverPwd, true);
     }
 
     public LocalEmbeddedServer(final File orientDir, final String serverUser, final String serverPwd, final boolean seperateProcess) {
@@ -135,7 +135,6 @@ public class LocalEmbeddedServer {
         }
         if ("root".equalsIgnoreCase(this.serverUser) && rootPwd != null && !rootPwd.isEmpty()) {
             logger.trace("Setting local server root password.");
-            startup.environment().put("ORIENTDB_ROOT_PASSWORD", rootPwd);
             startup.environment().put("JAVA_OPTS", "-DORIENTDB_ROOT_PASSWORD=" + rootPwd);
         }
         this.activeProcess = startup.start();
@@ -431,10 +430,6 @@ public class LocalEmbeddedServer {
 
     private static String rootPassword() {
         // check for default root password for new/clean installations
-        final String envPwd = System.getenv("ORIENTDB_ROOT_PASSWORD");
-        if (envPwd != null && !envPwd.isEmpty()) {
-            return envPwd;
-        }
         return System.getProperty("ORIENTDB_ROOT_PASSWORD");
     }
 }
