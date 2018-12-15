@@ -2,6 +2,7 @@ package org.normandra.orientdb.data;
 
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.record.OElement;
+import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.executor.OResult;
 import com.orientechnologies.orient.core.sql.executor.OResultSet;
@@ -167,17 +168,22 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
                     return null;
                 }
 
-                if (obj.getIdentity().isPresent()) {
-                    return database.load(obj.getIdentity().get());
-                } else if (obj.getRecord().isPresent()) {
-                    return database.load(obj.getRecord().get());
-                } else if (obj.getElement().isPresent()) {
+                if (obj.getElement().isPresent()) {
                     final OElement element = obj.getElement().get();
-                    if (element.isEdge()) {
-                        return database.load(element.asEdge().get().getIdentity());
-                    } else if (element.isVertex()) {
-                        return database.load(element.asVertex().get().getIdentity());
+                    if (element instanceof ODocument) {
+                        return (ODocument) element;
+                    } else {
+                        return database.load(element);
                     }
+                } else if (obj.getRecord().isPresent()) {
+                    final ORecord record = obj.getRecord().get();
+                    if (record instanceof ODocument) {
+                        return (ODocument) record;
+                    } else {
+                        return database.load(record);
+                    }
+                } else if (obj.getIdentity().isPresent()) {
+                    return database.load(obj.getIdentity().get());
                 }
 
                 throw new IllegalStateException("Unexpected document type [" + obj + "].");
