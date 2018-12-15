@@ -233,7 +233,7 @@ public class OrientHelper implements TestHelper {
     private final File orientDist = new File("src/test/dist/orientdb-3.0.12.zip");
 
     public OrientHelper() {
-        this(true);
+        this(false);
     }
 
     public OrientHelper(final boolean serverMode) {

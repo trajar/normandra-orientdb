@@ -5,6 +5,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import com.orientechnologies.orient.server.OServer;
+import com.orientechnologies.orient.server.OServerMain;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -21,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Base64;
 import java.util.Collection;
@@ -45,7 +49,11 @@ public class LocalEmbeddedServer {
 
     private int httpPort = -1;
 
+    private Thread activeThread = null;
+
     private Process activeProcess = null;
+
+    private final boolean seperateProcess;
 
     private Thread shutdownHook = null;
 
@@ -54,17 +62,65 @@ public class LocalEmbeddedServer {
     }
 
     public LocalEmbeddedServer(final File orientDir, final String serverUser, final String serverPwd) {
+        this(orientDir, serverUser, serverPwd, false);
+    }
+
+    public LocalEmbeddedServer(final File orientDir, final String serverUser, final String serverPwd, final boolean seperateProcess) {
         this.orientDir = orientDir;
         this.serverUser = serverUser;
         this.serverPwd = serverPwd;
+        this.seperateProcess = seperateProcess;
     }
 
     public boolean startIfNotRunning() throws Exception {
         if (this.isRunning()) {
-            // already running
             return true;
         }
+        if (this.seperateProcess) {
+            return this.spawnSeperateProcess();
+        } else {
+            return this.spawnThreaded();
+        }
+    }
 
+    private boolean spawnThreaded() throws Exception {
+        // build local config
+        // this.getClass().getResource("local-server.xml")
+        URL url = new File("/Users/macbits/work/normandra-orientdb/src/main/resources/org.normandra.orientdb.data/local-server.xml").toURL();
+        String configXml = IOUtils.toString(url, "UTF-8");
+        configXml = configXml.replaceAll("\\$\\{orient\\.user\\}", this.serverUser);
+        configXml = configXml.replaceAll("\\$\\{orient\\.password\\}", this.serverUser);
+        configXml = configXml.replaceAll("\\$\\{orient\\.dir\\}", this.orientDir.getCanonicalPath());
+
+        // start server
+        final String xml = configXml;
+        final OServer server = OServerMain.create();
+        final Runnable worker = () -> {
+            try {
+                server.startup(xml).activate();
+            } catch (final Exception e) {
+                logger.error("Unable to start orientdb local server.", e);
+            }
+        };
+        this.activeThread = new Thread(worker);
+        this.activeThread.setDaemon(true);
+        this.activeThread.setName(this.getClass().getSimpleName() + "-Worker");
+        this.activeThread.start();
+
+        // register shutdown
+        this.shutdownHook = new Thread(() -> {
+            try {
+                server.shutdown();
+                server.waitForShutdown();
+            } catch (final Exception e) {
+                logger.warn("Unable to execute shutdown script.", e);
+            }
+        });
+        Runtime.getRuntime().addShutdownHook(this.shutdownHook);
+        return true;
+    }
+
+    private boolean spawnSeperateProcess() throws Exception {
         // spawn process
         final File bin = new File(this.orientDir, "bin").getCanonicalFile();
         if (!bin.exists()) {
@@ -145,6 +201,16 @@ public class LocalEmbeddedServer {
                 }
             }
             this.activeProcess = null;
+        }
+
+        if (this.activeThread != null) {
+            this.activeThread.interrupt();
+            if (waitMs > 0) {
+                this.activeThread.join(waitMs);
+            } else {
+                this.activeThread.join();
+            }
+            this.activeThread = null;
         }
     }
 

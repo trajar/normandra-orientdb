@@ -2,3 +2,4 @@
 target/
 src/test/resources/orientdb-sample/databases/
 src/test/resources/orientdb-sample/databases/testme/
+databases/
