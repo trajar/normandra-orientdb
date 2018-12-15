@@ -197,9 +197,7 @@ package org.normandra.orientdb.graph;
 import com.orientechnologies.orient.core.db.ODatabase;
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.tinkerpop.blueprints.impls.orient.OrientEdgeType;
 import com.tinkerpop.blueprints.impls.orient.OrientVertexType;
 import org.apache.commons.io.FilenameUtils;
@@ -264,10 +262,10 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
     @Override
     public OrientGraph createGraph() {
         final ODatabaseDocument db = this.pool.acquire();
-        if (!(db instanceof ODatabaseDocumentTx)) {
+        if (!(db instanceof ODatabaseDocumentInternal)) {
             throw new IllegalStateException("Expected database document internal type, but found [" + db.getClass() + "].");
         }
-        final ODatabaseDocumentTx internal = (ODatabaseDocumentTx) db;
+        final ODatabaseDocumentInternal internal = (ODatabaseDocumentInternal) db;
         final boolean autotx = "true".equalsIgnoreCase(System.getProperty("graph.autoStartTx", "false"));
         final boolean useLightweightEdges = "true".equalsIgnoreCase(System.getProperty("graph.useLightweightEdges", "false"));
         final com.tinkerpop.blueprints.impls.orient.OrientGraph api = new com.tinkerpop.blueprints.impls.orient.OrientGraph(internal, autotx);

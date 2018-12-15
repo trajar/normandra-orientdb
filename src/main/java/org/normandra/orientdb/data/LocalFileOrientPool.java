@@ -195,9 +195,10 @@
 package org.normandra.orientdb.data;
 
 import com.orientechnologies.orient.core.Orient;
-import com.orientechnologies.orient.core.db.ODatabase;
+import com.orientechnologies.orient.core.db.ODatabaseType;
+import com.orientechnologies.orient.core.db.OrientDB;
+import com.orientechnologies.orient.core.db.OrientDBConfig;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -219,6 +220,8 @@ public class LocalFileOrientPool implements OrientPool {
 
     private final String database;
 
+    private final OrientDB orientdb;
+
     private final Set<ODatabaseDocument> opened = new HashSet<>();
 
     private final Timer timer;
@@ -236,6 +239,7 @@ public class LocalFileOrientPool implements OrientPool {
         this.username = user;
         this.password = pwd;
         this.database = database;
+        this.orientdb = new OrientDB(url, OrientDBConfig.defaultConfig());
         this.timer = new Timer(this.getClass().getName() + "-Timer", true);
     }
 
@@ -250,11 +254,9 @@ public class LocalFileOrientPool implements OrientPool {
             final int index = this.url.indexOf(":");
             final File path = new File(this.url.substring(index + 1));
             try {
-                if (!path.exists() || path.list().length <= 0) {
+                if (!path.exists() || !path.isDirectory() || path.list().length <= 0) {
                     FileUtils.forceMkdir(path);
-                    try (final ODatabase db = new ODatabaseDocumentTx(this.url, false)) {
-                        db.create();
-                    }
+                    this.orientdb.create(this.database, ODatabaseType.PLOCAL);
                 }
             } catch (final Exception e) {
                 throw new IllegalStateException("Unable to create local directory structure.", e);
@@ -263,7 +265,7 @@ public class LocalFileOrientPool implements OrientPool {
         }
 
         // create new connection
-        final ODatabaseDocument db = new ODatabaseDocumentTx(OrientUtils.url(url, database)).open(this.username, this.password);
+        final ODatabaseDocument db = this.orientdb.open(this.database, this.username, this.password);
         db.activateOnCurrentThread();
         this.opened.add(db);
 

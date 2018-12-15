@@ -1,7 +1,8 @@
 package org.normandra.orientdb.data;
 
+import com.orientechnologies.orient.core.db.OrientDB;
+import com.orientechnologies.orient.core.db.OrientDBConfig;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -16,6 +17,8 @@ public class DynamicOrientPool implements OrientPool {
 
     private final Collection<ODatabaseDocument> opened = new CopyOnWriteArraySet<>();
 
+    private final OrientDB orientdb;
+
     private final String url;
 
     private final String database;
@@ -29,12 +32,13 @@ public class DynamicOrientPool implements OrientPool {
         this.database = database;
         this.username = user;
         this.password = pwd;
+        this.orientdb = new OrientDB(url, OrientDBConfig.defaultConfig());
     }
 
     @Override
     public ODatabaseDocument acquire() {
         this.checkOpenedConnections();
-        final ODatabaseDocument session = new ODatabaseDocumentTx(OrientUtils.url(url, database)).open(this.username, this.password);
+        final ODatabaseDocument session = this.orientdb.open(this.database, this.username, this.password);
         session.activateOnCurrentThread();
         this.opened.add(session);
         return session;

@@ -1,16 +1,10 @@
 package org.normandra.orientdb.data;
 
-import com.orientechnologies.orient.core.command.OCommandResultListener;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
-import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.id.ORID;
-import com.orientechnologies.orient.core.record.ORecord;
+import com.orientechnologies.orient.core.record.OElement;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.query.OSQLAsynchQuery;
-import com.orientechnologies.orient.core.sql.query.OSQLQuery;
+import com.orientechnologies.orient.core.sql.executor.OResult;
+import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import org.apache.commons.lang.NullArgumentException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 /**
@@ -26,16 +19,6 @@ import java.util.stream.Collectors;
  */
 public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(OrientSelfClosingQuery.class);
-
-    private static final Executor executor = Executors.newCachedThreadPool(new ThreadFactory() {
-        @Override
-        public Thread newThread(Runnable r) {
-            final Thread thread = new Thread(r);
-            thread.setName(OrientSelfClosingQuery.class.getSimpleName() + "-Listener");
-            thread.setDaemon(true);
-            return thread;
-        }
-    });
 
     private final ODatabaseDocument database;
 
@@ -45,7 +28,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
 
     private final Map<String, Object> parameterMap;
 
-    private OrientNonBlockingListener results = null;
+    private OResultSet results = null;
 
     private boolean closed = false;
 
@@ -113,80 +96,42 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
         return false;
     }
 
-    synchronized private Iterator<?> execute() {
+    synchronized private OResultSet execute() {
         try {
             this.closeResults();
         } catch (Exception e) {
             logger.warn("Unable to close previous query results.", e);
         }
 
-        final ODatabaseDocumentInternal currentThreadLocal = ODatabaseRecordThreadLocal.instance().getIfDefined();
-        final ODatabaseDocumentInternal db = ((ODatabaseDocumentTx) database).copy();
-        if (currentThreadLocal != null) {
-            currentThreadLocal.activateOnCurrentThread();
-        } else {
-            ODatabaseRecordThreadLocal.instance().set(null);
-        }
-
-        final OrientNonBlockingListener listener = new OrientNonBlockingListener();
-        final Runnable worker = () -> {
-            try {
-                db.activateOnCurrentThread();
-                final OSQLQuery q = new OSQLAsynchQuery(query, listener);
-                if (!parameterList.isEmpty()) {
-                    final List<Object> packed = parameterList.stream()
-                            .map(OrientUtils::packPrimitive)
-                            .collect(Collectors.toList());
-                    db.query(q, packed.toArray());
-                } else if (!parameterMap.isEmpty()) {
-                    final Map<String, Object> packed = new LinkedHashMap<>();
-                    for (final Map.Entry<String, Object> entry : parameterMap.entrySet()) {
-                        packed.put(entry.getKey(), OrientUtils.packPrimitive(entry.getValue()));
-                    }
-                    db.query(q, packed);
-                } else {
-                    db.query(q);
-                }
-            } catch (final Exception e) {
-                logger.error("Error during asynch query in listener thread.", e);
-                listener.offerElement(e);
-            } finally {
-                try {
-                    db.close();
-                } catch (Exception e) {
-                    logger.error("Unable to close database instance.", e);
-                    listener.offerElement(e);
-                }
+        this.results = null;
+        if (!parameterList.isEmpty()) {
+            final List<Object> packed = parameterList.stream()
+                    .map(OrientUtils::packPrimitive)
+                    .collect(Collectors.toList());
+            this.results = this.database.query(this.query, packed.toArray());
+        } else if (!parameterMap.isEmpty()) {
+            final Map<String, Object> packed = new LinkedHashMap<>();
+            for (final Map.Entry<String, Object> entry : parameterMap.entrySet()) {
+                packed.put(entry.getKey(), OrientUtils.packPrimitive(entry.getValue()));
             }
-        };
-        executor.execute(worker);
-
-        this.results = listener;
+            this.results = this.database.query(this.query, packed);
+        } else {
+            this.results = this.database.query(this.query);
+        }
         return this.results;
     }
 
-    synchronized private void closeResults() throws Exception {
+    synchronized private void closeResults() {
         if (this.results != null) {
-            closeElement(this.results);
+            this.results.close();
             this.results = null;
-        }
-    }
-
-    private static void closeElement(final Object obj) throws Exception {
-        if (null == obj) {
-            return;
-        }
-        if (obj instanceof Closeable) {
-            ((Closeable) obj).close();
-        } else if (obj instanceof AutoCloseable) {
-            ((AutoCloseable) obj).close();
         }
     }
 
     @Override
     public Iterator<ODocument> iterator() {
         // execute query
-        final Iterator<?> results = this.execute();
+        final Iterator<OResult> results = this.execute();
         if (null == results) {
             return Collections.emptyIterator();
         }
@@ -217,169 +162,26 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
                     throw new IllegalStateException("Query is closed.");
                 }
 
-                final Object obj = results.next();
+                final OResult obj = results.next();
                 if (null == obj) {
                     return null;
                 }
 
-                if (obj instanceof ODocument) {
-                    return (ODocument) obj;
-                } else if (obj instanceof ORecord) {
-                    return database.load((ORecord) obj);
-                } else if (obj instanceof OIdentifiable) {
-                    return database.load(((OIdentifiable) obj).getIdentity());
-                } else if (obj instanceof ORID) {
-                    return database.load((ORID) obj);
+                if (obj.getIdentity().isPresent()) {
+                    return database.load(obj.getIdentity().get());
+                } else if (obj.getRecord().isPresent()) {
+                    return database.load(obj.getRecord().get());
+                } else if (obj.getElement().isPresent()) {
+                    final OElement element = obj.getElement().get();
+                    if (element.isEdge()) {
+                        return database.load(element.asEdge().get().getIdentity());
+                    } else if (element.isVertex()) {
+                        return database.load(element.asVertex().get().getIdentity());
+                    }
                 }
 
-                throw new IllegalStateException("Unexpected document type [" + obj.getClass() + "].");
+                throw new IllegalStateException("Unexpected document type [" + obj + "].");
             }
         };
-    }
-
-    private class OrientNonBlockingListener implements OCommandResultListener, Iterator<Object>, Closeable {
-        private final BlockingQueue<Object> queue = new ArrayBlockingQueue<>(50);
-
-        private Object next = null;
-
-        private boolean done = false;
-
-        private boolean needsFetch = true;
-
-        @Override
-        public boolean result(final Object record) {
-            if (null == record) {
-                return false;
-            }
-
-            if (isClosed() || isDone()) {
-                return false;
-            }
-
-            return this.offerElement(record);
-        }
-
-        @Override
-        public void end() {
-            this.endService();
-        }
-
-        @Override
-        public Object getResult() {
-            return null;
-        }
-
-        @Override
-        public void close() {
-            if (!this.isDone()) {
-                this.endService();
-            }
-        }
-
-        private boolean endService() {
-            synchronized (this) {
-                this.done = true;
-            }
-
-            return this.offerElement(new EndOfServiceElement());
-        }
-
-        synchronized private boolean isDone() {
-            return this.done;
-        }
-
-        public boolean offerElement(final Object item) {
-            final long fetchStartMs = System.currentTimeMillis();
-            final long maxWaitMs = getTimeOutDelay();
-            while (!isClosed() && !isDone()) {
-                try {
-                    if (queue.offer(item, 100, TimeUnit.MILLISECONDS)) {
-                        return true;
-                    }
-                } catch (final InterruptedException e) {
-                    logger.trace("Unable to offer element in non-blocking queue.", e);
-                    return false;
-                }
-                if (maxWaitMs > 0 && System.currentTimeMillis() - fetchStartMs > maxWaitMs) {
-                    logger.debug("Waited more than [" + maxWaitMs + "] msec to add item to queue - offer aborted.");
-                    return false;
-                }
-            }
-            return false;
-        }
-
-        @Override
-        public boolean hasNext() {
-            if (this.needsFetch) {
-                if (!this.fetch()) {
-                    return false;
-                }
-            }
-
-            return this.next != null;
-        }
-
-        @Override
-        public Object next() {
-            if (this.needsFetch) {
-                if (!this.fetch()) {
-                    return null;
-                }
-            }
-
-            final Object document = this.next;
-            this.next = null;
-            this.needsFetch = true;
-            return document;
-        }
-
-        private boolean fetch() {
-            this.next = null;
-            this.needsFetch = true;
-            final long fetchStartMs = System.currentTimeMillis();
-            final long maxWaitMs = getTimeOutDelay();
-            while (!this.queue.isEmpty() || (!isClosed() && !isDone())) {
-                try {
-                    final Object item = this.queue.poll(100, TimeUnit.MILLISECONDS);
-                    if (item instanceof EndOfServiceElement) {
-                        this.next = null;
-                        this.needsFetch = false;
-                        return false;
-                    } else if (item instanceof Throwable) {
-                        throw new IllegalStateException("Unable to get next element from query.", (Throwable) item);
-                    } else if (item != null) {
-                        this.next = item;
-                        this.needsFetch = false;
-                        return true;
-                    } else if (maxWaitMs > 0 && System.currentTimeMillis() - fetchStartMs > maxWaitMs) {
-                        logger.debug("Waited more than [" + maxWaitMs + "] msec for item from queue - fetch aborted.");
-                        return false;
-                    }
-                } catch (final InterruptedException e) {
-                    logger.debug("Unable to poll non-blocking queue.", e);
-                    return false;
-                }
-            }
-            return false;
-        }
-    }
-
-    private static class EndOfServiceElement {
-        private final UUID guid = UUID.randomUUID();
-
-        private final long time = System.currentTimeMillis();
-    }
-
-    private static long getTimeOutDelay() {
-        final String prop = System.getProperty("query.nonBlocking.timeOut");
-        if (null == prop || prop.trim().isEmpty()) {
-            return -1;
-        }
-
-        try {
-            return Long.parseLong(prop);
-        } catch (final Exception e) {
-            throw new IllegalStateException("Unable to parse timeout value of [" + prop + "].", e);
-        }
     }
 }
