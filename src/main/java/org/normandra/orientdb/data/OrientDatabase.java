@@ -282,20 +282,20 @@ public class OrientDatabase implements Database {
     }
 
     public static OrientDatabase createLocalServer(
-            final File path, final String database, final String userid, final String password,
+            final File path, final String database, final String userid, final String password, final boolean separateProcess,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final Collection<Class> types) {
-        final OrientPool pool = new LocalServerOrientPool(path, database, userid, password);
+        final OrientPool pool = new LocalServerOrientPool(path, database, userid, password, separateProcess);
         final AnnotationParser parser = new AnnotationParser(columnFactory, types);
         final DatabaseMeta meta = new DatabaseMeta(parser.read());
         return new OrientDatabase("remote:localhost", pool, factory, mode, meta);
     }
 
     public static OrientDatabase createLocalServer(
-            final File path, final String database, final String userid, final String password,
+            final File path, final String database, final String userid, final String password, final boolean separateProcess,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final DatabaseMetaBuilder metaBuilder) {
-        final OrientPool pool = new LocalServerOrientPool(path, database, userid, password);
+        final OrientPool pool = new LocalServerOrientPool(path, database, userid, password, separateProcess);
         final DatabaseMeta meta = metaBuilder.withColumnFactory(columnFactory).create();
         return new OrientDatabase("remote:localhost", pool, factory, mode, meta);
     }

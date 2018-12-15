@@ -53,7 +53,7 @@ public class LocalEmbeddedServer {
 
     private Process activeProcess = null;
 
-    private final boolean seperateProcess;
+    private final boolean separateProcess;
 
     private Thread shutdownHook = null;
 
@@ -62,21 +62,21 @@ public class LocalEmbeddedServer {
     }
 
     public LocalEmbeddedServer(final File orientDir, final String serverUser, final String serverPwd) {
-        this(orientDir, serverUser, serverPwd, true);
+        this(orientDir, serverUser, serverPwd, false);
     }
 
-    public LocalEmbeddedServer(final File orientDir, final String serverUser, final String serverPwd, final boolean seperateProcess) {
+    public LocalEmbeddedServer(final File orientDir, final String serverUser, final String serverPwd, final boolean separateProcess) {
         this.orientDir = orientDir;
         this.serverUser = serverUser;
         this.serverPwd = serverPwd;
-        this.seperateProcess = seperateProcess;
+        this.separateProcess = separateProcess;
     }
 
     public boolean startIfNotRunning() throws Exception {
         if (this.isRunning()) {
             return true;
         }
-        if (this.seperateProcess) {
+        if (this.separateProcess) {
             return this.spawnSeperateProcess();
         } else {
             return this.spawnThreaded();

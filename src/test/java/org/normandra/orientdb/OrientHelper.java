@@ -230,14 +230,17 @@ public class OrientHelper implements TestHelper {
 
     private final boolean useLocalServer;
 
+    private final boolean separateProcess;
+
     private final File orientDist = new File("src/test/dist/orientdb-3.0.12.zip");
 
     public OrientHelper() {
-        this(false);
+        this(false, false);
     }
 
-    public OrientHelper(final boolean serverMode) {
-        useLocalServer = serverMode;
+    public OrientHelper(final boolean serverMode, final boolean separateProcess) {
+        this.useLocalServer = serverMode;
+        this.separateProcess = separateProcess;
     }
 
     @Override
@@ -273,7 +276,7 @@ public class OrientHelper implements TestHelper {
     public void create(DatabaseMetaBuilder builder) throws Exception {
         Orient.instance().startup();
         if (useLocalServer) {
-            database = OrientDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+            database = OrientDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, separateProcess, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
         } else {
             ensurePaths(embeddedDir);
             database = OrientDatabase.createLocalFile(embeddedDir, databaseName, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);

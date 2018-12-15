@@ -31,13 +31,24 @@ public class LocalServerOrientPool implements OrientPool {
     private boolean firstTime = true;
 
     public LocalServerOrientPool(final File orientDir, final String database, final String user, final String pwd) {
-        this(orientDir, user, pwd, database, user, pwd);
+        this(orientDir, database, user, pwd, false);
+    }
+
+    public LocalServerOrientPool(final File orientDir, final String database, final String user, final String pwd, final boolean separateProcess) {
+        this(orientDir, user, pwd, database, user, pwd, separateProcess);
     }
 
     public LocalServerOrientPool(
             final File orientDir, final String serverUser, final String serverPwd,
             final String database, final String databaseUser, final String databasePwd) {
-        this.localServer = new LocalEmbeddedServer(orientDir, serverUser, serverPwd);
+        this(orientDir, serverUser, serverPwd, database, databaseUser, databasePwd, false);
+    }
+
+    public LocalServerOrientPool(
+            final File orientDir, final String serverUser, final String serverPwd,
+            final String database, final String databaseUser, final String databasePwd,
+            final boolean separateProcess) {
+        this.localServer = new LocalEmbeddedServer(orientDir, serverUser, serverPwd, separateProcess);
         this.pool = new DynamicOrientPool(this.localServer.getBinaryUrl(), database, databaseUser, databasePwd);
         this.database = database;
         this.username = databaseUser;
