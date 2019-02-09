@@ -31,6 +31,8 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
 
     private OResultSet results = null;
 
+    private final boolean namedParameters;
+
     private boolean closed = false;
 
     public OrientSelfClosingQuery(final ODatabaseDocument db, final String query) {
@@ -46,6 +48,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
         }
         this.database = db;
         this.query = query;
+        this.namedParameters = false;
         this.parameterMap = Collections.emptyMap();
         if (params != null && !params.isEmpty()) {
             this.parameterList = new ArrayList<>(params);
@@ -64,6 +67,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
         this.database = db;
         this.query = query;
         this.parameterList = Collections.emptyList();
+        this.namedParameters = true;
         if (params != null && !params.isEmpty()) {
             this.parameterMap = new LinkedHashMap<>(params);
         } else {
@@ -110,7 +114,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
                     .map(OrientUtils::packPrimitive)
                     .collect(Collectors.toList());
             this.results = this.database.query(this.query, packed.toArray());
-        } else if (!parameterMap.isEmpty()) {
+        } else if (namedParameters || !parameterMap.isEmpty()) {
             final Map<String, Object> packed = new LinkedHashMap<>();
             for (final Map.Entry<String, Object> entry : parameterMap.entrySet()) {
                 packed.put(entry.getKey(), OrientUtils.packPrimitive(entry.getValue()));

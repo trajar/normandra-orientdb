@@ -195,7 +195,8 @@
 package org.normandra.orientdb.data;
 
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
+import com.orientechnologies.orient.core.sql.executor.OResult;
+import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import org.normandra.NormandraException;
 import org.normandra.data.DataHolder;
 import org.normandra.meta.EntityMeta;
@@ -277,9 +278,15 @@ public class OrientLazyQueryHolder implements DataHolder {
 
         try {
             this.documents.clear();
-            for (final Object item : this.session.database().query(new OSQLSynchQuery(this.query), parameters.toArray())) {
-                if (item instanceof ODocument) {
-                    this.documents.add((ODocument) item);
+            try (final OResultSet results = this.session.database().query(this.query, parameters.toArray())) {
+                while (results.hasNext()) {
+                    final OResult item = results.next();
+                    if (item.isRecord()) {
+                        final ODocument doc = this.session.database.load(item.getRecord().get());
+                        if (doc != null) {
+                            this.documents.add(doc);
+                        }
+                    }
                 }
             }
             this.loaded.getAndSet(true);

@@ -356,7 +356,7 @@ public class OrientUtils {
             return ((OIdentifiable) value).getIdentity();
         }
         if (UUID.class.equals(clazz)) {
-            return DataUtils.bytesToUUID((byte[]) value);
+            return DataUtils.stringToUUID(value.toString());
         }
         if (Date.class.equals(clazz)) {
             return value;
@@ -406,7 +406,7 @@ public class OrientUtils {
             return value;
         }
         if (value instanceof UUID) {
-            return DataUtils.uuidToBytes((UUID) value);
+            return DataUtils.uuidToString((UUID) value);
         }
         if (value instanceof Number) {
             final Class<?> clazz = value.getClass();
@@ -507,6 +507,11 @@ public class OrientUtils {
         }
         if (Date.class.equals(clazz)) {
             return OType.DATETIME;
+        }
+        if(UUID.class.equals(clazz)) {
+            // orientdb stored them as base64 internally, so not losing anything storing as string
+            // see http://orientdb.com/docs/3.0.x/java/Binary-Data.html
+            return OType.STRING;
         }
         return OType.BINARY;
     }

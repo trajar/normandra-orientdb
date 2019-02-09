@@ -199,8 +199,8 @@ import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.index.OIndex;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.query.OSQLQuery;
-import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
+import com.orientechnologies.orient.core.sql.executor.OResult;
+import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import com.orientechnologies.orient.core.tx.OTransaction;
 import org.apache.commons.lang.NullArgumentException;
 import org.normandra.*;
@@ -602,22 +602,23 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         }
         query.append("]");
 
-        final OSQLQuery q = new OSQLSynchQuery(query.toString());
-        final Iterable items = parameters.size() == 1 ? this.database.query(q, parameters.get(0)) : this.database.query(q, parameters.toArray());
-        if (null == items) {
-            return null;
-        }
-        int numMatching = 0;
-        for (final Object item : items) {
-            if (item instanceof ODocument) {
-                return fixIdentifiable((ODocument) item);
-            } else if (item instanceof ORID) {
-                return database.load((ORID) item);
+        try (final OResultSet resultset = parameters.size() == 1 ? this.database.query(query.toString(), parameters.get(0)) : this.database.query(query.toString(), parameters.toArray())) {
+            int numMatching = 0;
+            while (resultset.hasNext()) {
+                final OResult item = resultset.next();
+                if (item.isRecord()) {
+                    return fixIdentifiable(item.getRecord().get());
+                } else if (item.isProjection()) {
+                    final Object rid = item.getElementProperty("rid");
+                    if (rid instanceof OIdentifiable) {
+                        return fixIdentifiable((OIdentifiable) rid);
+                    }
+                }
+                numMatching++;
             }
-            numMatching++;
-        }
-        if (numMatching > 0) {
-            throw new IllegalStateException("Found matching index keys but unable to build identifiable record.");
+            if (numMatching > 0) {
+                throw new IllegalStateException("Found matching index keys but unable to build identifiable record.");
+            }
         }
         return null;
     }
