@@ -197,6 +197,7 @@ package org.normandra.orientdb.graph;
 import com.orientechnologies.orient.core.db.ODatabase;
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.exception.OSecurityAccessException;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.tinkerpop.blueprints.impls.orient.OrientEdgeType;
 import com.tinkerpop.blueprints.impls.orient.OrientVertexType;
@@ -269,7 +270,13 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
         final boolean autotx = "true".equalsIgnoreCase(System.getProperty("graph.autoStartTx", "false"));
         final boolean useLightweightEdges = "true".equalsIgnoreCase(System.getProperty("graph.useLightweightEdges", "false"));
         final com.tinkerpop.blueprints.impls.orient.OrientGraph api = new com.tinkerpop.blueprints.impls.orient.OrientGraph(internal, autotx);
-        api.setUseLightweightEdges(useLightweightEdges);
+        try {
+            if (api.isUseLightweightEdges() != useLightweightEdges) {
+                api.setUseLightweightEdges(useLightweightEdges);
+            }
+        } catch (final OSecurityAccessException e) {
+            logger.warn("Unable to set lightweight edges to [" + useLightweightEdges + "].", e);
+        }
         return new OrientGraph(this.meta, api, this.statementsByName, this.cache.create());
     }
 
