@@ -196,6 +196,7 @@ package org.normandra.orientdb.data;
 
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
+import com.orientechnologies.orient.core.exception.ODatabaseException;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.index.OIndex;
 import com.orientechnologies.orient.core.record.impl.ODocument;
@@ -216,6 +217,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -259,7 +261,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
     public boolean pendingWork() {
         final OTransaction tx = this.database.getTransaction();
         if (null == tx) {
-            logger.debug("Unable to locate database transaction.");
+            logger.trace("Unable to locate database transaction.");
             return false;
         } else {
             return tx.isActive();
@@ -268,32 +270,48 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 
     @Override
     public void beginWork() {
-        if (logger.isDebugEnabled()) {
-            if (this.pendingWork()) {
-                logger.debug("Beginning transaction, but already in pending-work state.");
-            }
+        if (this.pendingWork()) {
+            logger.trace("Beginning transaction, but already in pending-work state.");
         }
         this.database.begin();
     }
 
     @Override
     public void commitWork() {
-        if (logger.isDebugEnabled()) {
-            if (!this.pendingWork()) {
-                logger.debug("Committing transaction, but not in pending-work state.");
-            }
+        if (!this.pendingWork()) {
+            logger.trace("Committing transaction, but not in pending-work state.");
         }
         this.database.commit();
     }
 
     @Override
     public void rollbackWork() {
-        if (logger.isDebugEnabled()) {
-            if (!this.pendingWork()) {
-                logger.debug("Rolling back transaction, but not in pending-work state.");
+        if (!this.pendingWork()) {
+            logger.trace("Rolling back transaction, but not in pending-work state.");
+        }
+        try {
+            this.database.rollback();
+        } catch (final ODatabaseException e) {
+            if (!isNoTransactionActive(e)) {
+                throw new ODatabaseException(e);
             }
         }
-        this.database.rollback();
+    }
+
+    private static final Pattern noTransactionPattern = Pattern.compile("(transaction).+(active)");
+
+    private static boolean isNoTransactionActive(final ODatabaseException e) {
+        if (null == e || e.getMessage() == null) {
+            return false;
+        }
+        final String msg = e.getMessage().toLowerCase();
+        if (msg.contains("no transaction active")) {
+            return true;
+        }
+        if (noTransactionPattern.matcher(msg).matches()) {
+            return true;
+        }
+        return false;
     }
 
     @Override
