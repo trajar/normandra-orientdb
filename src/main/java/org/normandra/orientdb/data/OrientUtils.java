@@ -285,7 +285,6 @@ public class OrientUtils {
         }
 
         final Class<?> clazz = column.getType();
-
         if (column.isCollection() && value instanceof Collection) {
             final Collection list = (Collection) value;
             final Class<?> generic;
@@ -325,17 +324,18 @@ public class OrientUtils {
         if (value instanceof ORecordLazyList) {
             return value;
         }
-        if (column.isJson()) {
-            return DataUtils.objectToJson(value);
-        }
 
         final Class<?> clazz = column.getType();
-
         if (column.isCollection() && value instanceof Collection) {
             final Collection list = (Collection) value;
             final List<Object> packed = new ArrayList<>(list.size());
             for (final Object item : list) {
-                final Object pack = packPrimitive(item);
+                final Object pack;
+                if (column.isJson()) {
+                    pack = DataUtils.objectToJson(item);
+                } else {
+                    pack = packPrimitive(item);
+                }
                 packed.add(pack);
             }
             if (List.class.isAssignableFrom(clazz)) {
@@ -343,6 +343,10 @@ public class OrientUtils {
             } else if (Collection.class.isAssignableFrom(clazz)) {
                 return new ArraySet<>(packed);
             }
+        }
+
+        if (column.isJson()) {
+            return DataUtils.objectToJson(value);
         }
 
         return packPrimitive(value);
@@ -508,7 +512,7 @@ public class OrientUtils {
         if (Date.class.equals(clazz)) {
             return OType.DATETIME;
         }
-        if(UUID.class.equals(clazz)) {
+        if (UUID.class.equals(clazz)) {
             // orientdb stored them as base64 internally, so not losing anything storing as string
             // see http://orientdb.com/docs/3.0.x/java/Binary-Data.html
             return OType.STRING;
