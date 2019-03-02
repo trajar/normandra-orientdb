@@ -199,6 +199,7 @@ import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.exception.OSecurityAccessException;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
+import com.orientechnologies.orient.enterprise.channel.binary.OTokenSecurityException;
 import com.tinkerpop.blueprints.impls.orient.OrientEdgeType;
 import com.tinkerpop.blueprints.impls.orient.OrientVertexType;
 import org.apache.commons.io.FilenameUtils;
@@ -262,22 +263,30 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
 
     @Override
     public OrientGraph createGraph() {
-        final ODatabaseDocument db = this.pool.acquire();
-        if (!(db instanceof ODatabaseDocumentInternal)) {
-            throw new IllegalStateException("Expected database document internal type, but found [" + db.getClass() + "].");
-        }
-        final ODatabaseDocumentInternal internal = (ODatabaseDocumentInternal) db;
         final boolean autotx = "true".equalsIgnoreCase(System.getProperty("graph.autoStartTx", "false"));
         final boolean useLightweightEdges = "true".equalsIgnoreCase(System.getProperty("graph.useLightweightEdges", "false"));
-        final com.tinkerpop.blueprints.impls.orient.OrientGraph api = new com.tinkerpop.blueprints.impls.orient.OrientGraph(internal, autotx);
-        try {
-            if (api.isUseLightweightEdges() != useLightweightEdges) {
-                api.setUseLightweightEdges(useLightweightEdges);
+        final int retries = 5;
+        for (int i = 0; i < retries; i++) {
+            final ODatabaseDocument db = this.pool.acquire();
+            try {
+                if (!(db instanceof ODatabaseDocumentInternal)) {
+                    throw new IllegalStateException("Expected database document internal type, but found [" + db.getClass() + "].");
+                }
+                final ODatabaseDocumentInternal internal = (ODatabaseDocumentInternal) db;
+                final com.tinkerpop.blueprints.impls.orient.OrientGraph api = new com.tinkerpop.blueprints.impls.orient.OrientGraph(internal, autotx);
+                if (api.isUseLightweightEdges() != useLightweightEdges) {
+                    api.setUseLightweightEdges(useLightweightEdges);
+                }
+                return new OrientGraph(this.meta, api, this.statementsByName, this.cache.create());
+            } catch (final OSecurityAccessException e) {
+                logger.warn("Unable to create orient graph from session [access] (retry " + (i + 1) + ").", e);
+                db.close();
+            } catch (final OTokenSecurityException e) {
+                logger.warn("Unable to create orient graph from session [token] (retry " + (i + 1) + ").", e);
+                db.close();
             }
-        } catch (final OSecurityAccessException e) {
-            logger.warn("Unable to set lightweight edges to [" + useLightweightEdges + "].", e);
         }
-        return new OrientGraph(this.meta, api, this.statementsByName, this.cache.create());
+        throw new IllegalStateException("Unable to create orient graph from database session.");
     }
 
     @Override
