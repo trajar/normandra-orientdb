@@ -36,7 +36,7 @@ public class DynamicOrientPool implements OrientPool {
     }
 
     @Override
-    public ODatabaseDocument acquire() {
+    synchronized public ODatabaseDocument acquire() {
         this.checkOpenedConnections();
         final ODatabaseDocument session = this.orientdb.open(this.database, this.username, this.password);
         session.activateOnCurrentThread();

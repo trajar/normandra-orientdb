@@ -208,7 +208,7 @@ public class FixedOrientPool implements OrientPool {
     }
 
     @Override
-    public ODatabaseDocument acquire() {
+    synchronized public ODatabaseDocument acquire() {
         return this.pool.acquire();
     }
 

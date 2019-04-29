@@ -426,7 +426,7 @@ public class OrientUtils {
             } else if (Double.class.equals(clazz)) {
                 return number.doubleValue();
             } else {
-                throw new IllegalArgumentException("Unexpected numeric type [" + value + "].");
+                throw new IllegalArgumentException("Unexpected numeric type [" + clazz + "] with value [" + value + "].");
             }
         }
         if (value instanceof Collection) {
@@ -442,7 +442,7 @@ public class OrientUtils {
             return DataUtils.objectToBytes((Serializable) value);
         }
 
-        throw new IllegalArgumentException("Unexpected value [" + value + "].");
+        throw new IllegalArgumentException("Unexpected value type [" + value.getClass() + "] with value [" + value + "].");
     }
 
     public static OType columnType(final ColumnMeta column) {
