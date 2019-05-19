@@ -257,8 +257,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         this.database.getLocalCache().invalidate();
     }
 
-    @Override
-    public boolean pendingWork() {
+    public boolean isTransactionActive() {
         final OTransaction tx = this.database.getTransaction();
         if (null == tx) {
             logger.trace("Unable to locate database transaction.");
@@ -270,24 +269,24 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 
     @Override
     public void beginWork() {
-        if (this.pendingWork()) {
-            logger.trace("Beginning transaction, but already in pending-work state.");
+        if (this.isTransactionActive()) {
+            logger.warn("Beginning transaction, but already in pending-work state.");
         }
         this.database.begin();
     }
 
     @Override
     public void commitWork() {
-        if (!this.pendingWork()) {
-            logger.trace("Committing transaction, but not in pending-work state.");
+        if (!this.isTransactionActive()) {
+            logger.warn("Committing transaction, but not in pending-work state.");
         }
         this.database.commit();
     }
 
     @Override
     public void rollbackWork() {
-        if (!this.pendingWork()) {
-            logger.trace("Rolling back transaction, but not in pending-work state.");
+        if (!this.isTransactionActive()) {
+            logger.warn("Rolling back transaction, but not in pending-work state.");
         }
         try {
             this.database.rollback();
