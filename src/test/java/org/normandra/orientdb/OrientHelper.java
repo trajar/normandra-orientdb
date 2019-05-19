@@ -232,7 +232,7 @@ public class OrientHelper implements TestHelper {
 
     private final boolean separateProcess;
 
-    private final File orientDist = new File("src/test/dist/orientdb-3.0.12.zip");
+    private final File orientDist = new File("src/test/dist/orientdb-3.0.19.zip");
 
     public OrientHelper() {
         this(false, false);
