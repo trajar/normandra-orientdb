@@ -430,8 +430,8 @@ public class OrientUtils {
             }
         }
         if (value instanceof Collection) {
-            final Collection unpacked = (Collection) value;
-            return unpacked.stream()
+            final Collection packed = (Collection) value;
+            return packed.stream()
                     .map((x) -> packPrimitive(x))
                     .collect(Collectors.toList());
         }
