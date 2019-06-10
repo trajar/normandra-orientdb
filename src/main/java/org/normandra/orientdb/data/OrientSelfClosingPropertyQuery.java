@@ -7,10 +7,10 @@ import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.executor.OResult;
 import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import org.apache.commons.lang.NullArgumentException;
+import org.normandra.PropertyQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -18,8 +18,8 @@ import java.util.stream.Collectors;
 /**
  * a query that auto-closes the query result set
  */
-public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, AutoCloseable {
-    private static final Logger logger = LoggerFactory.getLogger(OrientSelfClosingQuery.class);
+public class OrientSelfClosingPropertyQuery implements PropertyQuery {
+    private static final Logger logger = LoggerFactory.getLogger(OrientSelfClosingPropertyQuery.class);
 
     private final ODatabaseDocument database;
 
@@ -33,13 +33,15 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
 
     private final boolean namedParameters;
 
+    private Map<String, Object> firstItem = null;
+
     private boolean closed = false;
 
-    public OrientSelfClosingQuery(final ODatabaseDocument db, final String query) {
+    public OrientSelfClosingPropertyQuery(final ODatabaseDocument db, final String query) {
         this(db, query, Collections.emptyList());
     }
 
-    public OrientSelfClosingQuery(final ODatabaseDocument db, final String query, final Collection<?> params) {
+    public OrientSelfClosingPropertyQuery(final ODatabaseDocument db, final String query, final Collection<?> params) {
         if (null == db) {
             throw new NullArgumentException("database");
         }
@@ -57,7 +59,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
         }
     }
 
-    public OrientSelfClosingQuery(final ODatabaseDocument db, final String query, final Map<String, Object> params) {
+    public OrientSelfClosingPropertyQuery(final ODatabaseDocument db, final String query, final Map<String, Object> params) {
         if (null == db) {
             throw new NullArgumentException("database");
         }
@@ -134,7 +136,39 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
     }
 
     @Override
-    public Iterator<ODocument> iterator() {
+    public Map<String, Object> first() {
+        if (this.firstItem != null) {
+            return Collections.unmodifiableMap(this.firstItem);
+        }
+
+        for (final Map<String, Object> item : this) {
+            if (item != null) {
+                this.firstItem = item;
+                return Collections.unmodifiableMap(item);
+            }
+        }
+
+        return null;
+    }
+
+    @Override
+    public List<Map<String, Object>> list() {
+        final List<Map<String, Object>> list = new ArrayList<>();
+        for (final Map<String, Object> item : this) {
+            if (item != null) {
+                list.add(item);
+            }
+        }
+        return Collections.unmodifiableList(list);
+    }
+
+    @Override
+    public boolean empty() {
+        return this.first() != null;
+    }
+
+    @Override
+    public Iterator<Map<String, Object>> iterator() {
         // execute query
         final Iterator<OResult> results = this.execute();
         if (null == results) {
@@ -142,7 +176,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
         }
 
         // wrap with closing iterator
-        return new Iterator<ODocument>() {
+        return new Iterator<Map<String, Object>>() {
             @Override
             public boolean hasNext() {
                 if (isClosed()) {
@@ -162,7 +196,7 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
             }
 
             @Override
-            public ODocument next() {
+            public Map<String, Object> next() {
                 if (isClosed()) {
                     throw new IllegalStateException("Query is closed.");
                 }
@@ -172,25 +206,54 @@ public class OrientSelfClosingQuery implements Iterable<ODocument>, Closeable, A
                     return null;
                 }
 
+                // load all properties
+                final Map<String, Object> properties = new HashMap<>();
                 if (obj.getElement().isPresent()) {
                     final OElement element = obj.getElement().get();
-                    if (element instanceof ODocument) {
-                        return (ODocument) element;
-                    } else {
-                        return database.load(element);
+                    for (final String propertyName : element.getPropertyNames()) {
+                        final Object val = element.getProperty(propertyName);
+                        if (val != null) {
+                            properties.put(propertyName, val);
+                        }
                     }
                 } else if (obj.getRecord().isPresent()) {
                     final ORecord record = obj.getRecord().get();
+                    final ODocument document;
                     if (record instanceof ODocument) {
-                        return (ODocument) record;
+                        document = (ODocument) record;
                     } else {
-                        return database.load(record);
+                        document = database.load(record);
+                    }
+                    for (final String propertyName : document.getPropertyNames()) {
+                        final Object val = document.getProperty(propertyName);
+                        if (val != null) {
+                            properties.put(propertyName, val);
+                        }
                     }
                 } else if (obj.getIdentity().isPresent()) {
-                    return database.load(obj.getIdentity().get());
+                    final ODocument document = database.load(obj.getIdentity().get());
+                    for (final String propertyName : document.getPropertyNames()) {
+                        final Object val = document.getProperty(propertyName);
+                        if (val != null) {
+                            properties.put(propertyName, val);
+                        }
+                    }
+                } else {
+                    for (final String propertyName : obj.getPropertyNames()) {
+                        final Object val = obj.getProperty(propertyName);
+                        if (val != null) {
+                            properties.put(propertyName, val);
+                        }
+                    }
                 }
 
-                throw new IllegalStateException("Unexpected document type [" + obj + "].");
+                // check first item
+                if (firstItem == null) {
+                    firstItem = new HashMap<>(properties);
+                }
+
+                // done
+                return Collections.unmodifiableMap(properties);
             }
         };
     }

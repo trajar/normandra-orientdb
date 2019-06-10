@@ -213,11 +213,11 @@ public class OrientDatabaseQuery<T> implements DatabaseQuery<T> {
 
     private final EntityMeta meta;
 
-    private final OrientSelfClosingQuery query;
+    private final OrientSelfClosingEntityQuery query;
 
     private T firstItem = null;
 
-    public OrientDatabaseQuery(final OrientDatabaseSession session, final EntityMeta meta, final OrientSelfClosingQuery query) {
+    public OrientDatabaseQuery(final OrientDatabaseSession session, final EntityMeta meta, final OrientSelfClosingEntityQuery query) {
         this.session = session;
         this.meta = meta;
         this.query = query;

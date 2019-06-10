@@ -450,15 +450,15 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
     }
 
     public <E> OrientNodeQuery<E> queryVertices(final String sql) {
-        return new OrientNodeQuery(this, new OrientSelfClosingQuery(this.database, sql));
+        return new OrientNodeQuery(this, new OrientSelfClosingEntityQuery(this.database, sql));
     }
 
     public <E> OrientNodeQuery<E> queryVertices(final String sql, final Map<String, Object> params) {
-        return new OrientNodeQuery(this, new OrientSelfClosingQuery(this.database, sql, params));
+        return new OrientNodeQuery(this, new OrientSelfClosingEntityQuery(this.database, sql, params));
     }
 
     public <E> OrientNodeQuery<E> queryVertices(final String sql, final Collection<?> params) {
-        return new OrientNodeQuery(this, new OrientSelfClosingQuery(this.database, sql, params));
+        return new OrientNodeQuery(this, new OrientSelfClosingEntityQuery(this.database, sql, params));
     }
 
     public <E> OrientEdgeQuery<E> queryEdges(final String sql) {
@@ -466,11 +466,11 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
     }
 
     public <E> OrientEdgeQuery<E> queryEdges(final String sql, final Map<String, Object> params) {
-        return new OrientEdgeQuery(this, new OrientSelfClosingQuery(this.database, sql, params));
+        return new OrientEdgeQuery(this, new OrientSelfClosingEntityQuery(this.database, sql, params));
     }
 
     public <E> OrientEdgeQuery<E> queryEdges(final String sql, final Collection<?> params) {
-        return new OrientEdgeQuery(this, new OrientSelfClosingQuery(this.database, sql, params));
+        return new OrientEdgeQuery(this, new OrientSelfClosingEntityQuery(this.database, sql, params));
     }
 
     @Override

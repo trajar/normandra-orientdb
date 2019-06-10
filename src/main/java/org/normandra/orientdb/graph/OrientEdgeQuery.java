@@ -198,16 +198,16 @@ import com.orientechnologies.orient.core.record.impl.ODocument;
 import org.apache.commons.lang.NullArgumentException;
 import org.normandra.graph.Edge;
 import org.normandra.graph.EdgeQuery;
-import org.normandra.orientdb.data.OrientSelfClosingQuery;
+import org.normandra.orientdb.data.OrientSelfClosingEntityQuery;
 
 import java.util.Iterator;
 
 public class OrientEdgeQuery<T> implements EdgeQuery<T> {
     private final OrientGraph graph;
 
-    private final OrientSelfClosingQuery delegate;
+    private final OrientSelfClosingEntityQuery delegate;
 
-    public OrientEdgeQuery(final OrientGraph db, final OrientSelfClosingQuery query) {
+    public OrientEdgeQuery(final OrientGraph db, final OrientSelfClosingEntityQuery query) {
         if (null == db) {
             throw new NullArgumentException("database");
         }

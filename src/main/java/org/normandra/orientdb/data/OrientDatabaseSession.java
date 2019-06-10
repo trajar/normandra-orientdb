@@ -381,11 +381,11 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
     public Object scalarQuery(final String queryOrName) throws NormandraException {
         try {
             final OrientQuery query = this.statementsByName.get(queryOrName);
-            final OrientSelfClosingQuery synchronizedQuery;
+            final OrientSelfClosingEntityQuery synchronizedQuery;
             if (query != null) {
-                synchronizedQuery = new OrientSelfClosingQuery(this.database, query.getQuery(), Collections.emptyList());
+                synchronizedQuery = new OrientSelfClosingEntityQuery(this.database, query.getQuery(), Collections.emptyList());
             } else {
-                synchronizedQuery = new OrientSelfClosingQuery(this.database, queryOrName, Collections.emptyList());
+                synchronizedQuery = new OrientSelfClosingEntityQuery(this.database, queryOrName, Collections.emptyList());
             }
             for (final ODocument document : synchronizedQuery) {
                 final Object[] values = document.fieldValues();
@@ -400,25 +400,25 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
     }
 
     private DatabaseQuery executeNamedQuery(final EntityMeta meta, final OrientQuery query, final Map<String, Object> params) {
-        final OrientSelfClosingQuery q = new OrientSelfClosingQuery(this.database, query.getQuery(), params);
+        final OrientSelfClosingEntityQuery q = new OrientSelfClosingEntityQuery(this.database, query.getQuery(), params);
         return new OrientDatabaseQuery(this, meta, q);
     }
 
     private DatabaseQuery executeDynamicQuery(final EntityMeta meta, final String query, final Map<String, Object> params) {
-        final OrientSelfClosingQuery q = new OrientSelfClosingQuery(this.database, query, params);
+        final OrientSelfClosingEntityQuery q = new OrientSelfClosingEntityQuery(this.database, query, params);
         return new OrientDatabaseQuery(this, meta, q);
     }
 
-    protected final OrientSelfClosingQuery query(final String query) {
-        return new OrientSelfClosingQuery(this.database, query, Collections.emptyList());
+    public final OrientSelfClosingEntityQuery query(final String query) {
+        return new OrientSelfClosingEntityQuery(this.database, query, Collections.emptyList());
     }
 
-    protected final OrientSelfClosingQuery query(final String query, final Collection<?> args) {
-        return new OrientSelfClosingQuery(this.database, query, args);
+    public final OrientSelfClosingEntityQuery query(final String query, final Collection<?> args) {
+        return new OrientSelfClosingEntityQuery(this.database, query, args);
     }
 
-    protected final OrientSelfClosingQuery query(final String query, final Map<String, Object> args) {
-        return new OrientSelfClosingQuery(this.database, query, args);
+    public final OrientSelfClosingPropertyQuery query(final String query, final Map<String, Object> args) {
+        return new OrientSelfClosingPropertyQuery(this.database, query, args);
     }
 
     @Override
