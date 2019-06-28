@@ -198,7 +198,6 @@ import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import org.apache.commons.lang.NullArgumentException;
 import org.normandra.NormandraException;
-import org.normandra.Transaction;
 import org.normandra.data.EntityReference;
 import org.normandra.data.GraphDataHandler;
 import org.normandra.data.StaticEntityReference;
@@ -245,12 +244,10 @@ public class OrientEdge<T> implements Edge<T> {
 
     @Override
     public void delete() throws NormandraException {
-        try (final Transaction tx = this.graph.beginTransaction()) {
+        this.graph.withTransaction(tx -> {
             this.edge.remove();
             tx.success();
-        } catch (final Exception e) {
-            throw new NormandraException("Unable to remove edge [" + this.edge + "].", e);
-        }
+        });
 
         final Object key = OrientUtils.unpackKey(this.meta, this.edge.getRecord());
         this.graph.cache().remove(this.meta, key);
@@ -299,15 +296,13 @@ public class OrientEdge<T> implements Edge<T> {
             throw new IllegalArgumentException("Unable to get meta for edge [" + this + "].");
         }
 
-        try (final Transaction tx = this.graph.beginTransaction()) {
+        this.graph.withTransaction(tx -> {
             // update model
             final PropertyModel model = this.graph.buildModel(meta, this.edge);
             final GraphDataHandler handler = new GraphDataHandler(model);
             new EntityPersistence(this.graph).save(meta, entity, handler);
             tx.success();
-        } catch (final Exception e) {
-            throw new NormandraException("Unable to update edge [" + this + "].", e);
-        }
+        });
 
         // update instance
         final Object key = meta.getId().fromEntity(entity);

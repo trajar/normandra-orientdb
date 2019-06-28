@@ -198,7 +198,6 @@ import com.tinkerpop.blueprints.Direction;
 import org.apache.commons.lang.NullArgumentException;
 import org.apache.commons.lang.StringUtils;
 import org.normandra.NormandraException;
-import org.normandra.Transaction;
 import org.normandra.data.EntityReference;
 import org.normandra.data.GraphDataHandler;
 import org.normandra.data.StaticEntityReference;
@@ -256,12 +255,10 @@ public class OrientNode<T> implements Node<T> {
 
     @Override
     public void delete() throws NormandraException {
-        try (final Transaction tx = this.graph.beginTransaction()) {
+        this.graph.withTransaction(tx -> {
             this.vertex.remove();
             tx.success();
-        } catch (final Exception e) {
-            throw new NormandraException("Unable to remove vertex [" + this.vertex + "].", e);
-        }
+        });
 
         final Object key = OrientUtils.unpackKey(this.meta, this.vertex.getRecord());
         this.graph.cache().remove(this.meta, key);
@@ -305,22 +302,20 @@ public class OrientNode<T> implements Node<T> {
             return null;
         }
 
-        final com.tinkerpop.blueprints.impls.orient.OrientEdge edge;
-        try (final Transaction tx = this.graph.beginTransaction()) {
+        final com.tinkerpop.blueprints.impls.orient.OrientEdge edge = this.graph.withTransaction(tx -> {
             final String schemaName = meta.getTable();
             final com.tinkerpop.blueprints.impls.orient.OrientVertex otherNode = ((OrientNode) node).element();
-            edge = this.vertex.addEdge(schemaName, otherNode, schemaName);
-            if (null == edge) {
+            final com.tinkerpop.blueprints.impls.orient.OrientEdge e = this.vertex.addEdge(schemaName, otherNode, schemaName);
+            if (null == e) {
                 return null;
             }
 
-            final PropertyModel model = this.graph.buildModel(meta, edge);
+            final PropertyModel model = this.graph.buildModel(meta, e);
             final GraphDataHandler handler = new GraphDataHandler(model);
             new EntityPersistence(this.graph).save(meta, entity, handler);
             tx.success();
-        } catch (final Exception e) {
-            throw new NormandraException("Unable to add edge [" + entity + "].", e);
-        }
+            return e;
+        });
 
         final Object key = meta.getId().fromEntity(entity);
         final EntityReference<E> reference = new StaticEntityReference<>(entity);
@@ -519,15 +514,13 @@ public class OrientNode<T> implements Node<T> {
             throw new IllegalArgumentException("Unable to get meta for node [" + this + "].");
         }
 
-        try (final Transaction tx = this.graph.beginTransaction()) {
+        this.graph.withTransaction(tx -> {
             // update model
             final PropertyModel model = this.graph.buildModel(meta, this.vertex);
             final GraphDataHandler handler = new GraphDataHandler(model);
             new EntityPersistence(this.graph).save(meta, instance, handler);
             tx.success();
-        } catch (final Exception e) {
-            throw new NormandraException("Unable to update node [" + instance + "].", e);
-        }
+        });
 
         // update instance
         final Object key = meta.getId().fromEntity(instance);

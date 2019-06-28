@@ -201,6 +201,7 @@ import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import org.normandra.NormandraException;
 import org.normandra.Transaction;
+import org.normandra.TransactionCallable;
 import org.normandra.cache.EntityCache;
 import org.normandra.data.DataHolderFactory;
 import org.normandra.data.EntityReference;
@@ -255,22 +256,20 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
             throw new IllegalArgumentException("Entity [" + meta + "] is not a registered node type.");
         }
 
-        final OrientVertex vertex;
-        try (final Transaction tx = this.beginTransaction()) {
+        final OrientVertex vertex = this.withTransaction(tx -> {
             // save entity using property model
             final String schemaName = meta.getTable();
             final String clusterName = null;
-            vertex = this.graph.addVertex(schemaName, clusterName);
-            if (null == vertex) {
+            final OrientVertex v = graph.addVertex(schemaName, clusterName);
+            if (null == v) {
                 return null;
             }
-            final PropertyModel model = this.buildModel(meta, vertex);
+            final PropertyModel model = buildModel(meta, v);
             final GraphDataHandler handler = new GraphDataHandler(model);
-            new EntityPersistence(this).save(meta, instance, handler);
+            new EntityPersistence(OrientGraph.this).save(meta, instance, handler);
             tx.success();
-        } catch (final Exception e) {
-            throw new NormandraException("Unable to add node [" + instance + "].", e);
-        }
+            return v;
+        });
 
         final EntityReference reference = new StaticEntityReference<>(instance);
         final Object key = meta.getId().fromEntity(instance);

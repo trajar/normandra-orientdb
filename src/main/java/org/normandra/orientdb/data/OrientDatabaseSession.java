@@ -204,7 +204,10 @@ import com.orientechnologies.orient.core.sql.executor.OResult;
 import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import com.orientechnologies.orient.core.tx.OTransaction;
 import org.apache.commons.lang.NullArgumentException;
-import org.normandra.*;
+import org.normandra.AbstractTransactional;
+import org.normandra.DatabaseQuery;
+import org.normandra.DatabaseSession;
+import org.normandra.NormandraException;
 import org.normandra.cache.EntityCache;
 import org.normandra.data.ColumnAccessor;
 import org.normandra.meta.ColumnMeta;
@@ -307,17 +310,15 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
             throw new NullArgumentException("element");
         }
 
-        try (final Transaction tx = this.beginTransaction()) {
-            final OrientDataHandler handler = new OrientDataHandler(this);
-            new EntityPersistence(this).save(meta, element, handler);
+        this.withTransaction(tx -> {
+            final OrientDataHandler handler = new OrientDataHandler(OrientDatabaseSession.this);
+            new EntityPersistence(OrientDatabaseSession.this).save(meta, element, handler);
 
             tx.success();
 
             final Object key = meta.getId().fromEntity(element);
-            this.cache.put(meta, key, element);
-        } catch (final Exception e) {
-            throw new NormandraException("Unable to create/save new orientdb document.", e);
-        }
+            cache.put(meta, key, element);
+        });
     }
 
     @Override
@@ -329,7 +330,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
             throw new NullArgumentException("element");
         }
 
-        try (final Transaction tx = this.beginTransaction()) {
+        this.withTransaction(tx -> {
             final Map<ColumnMeta, Object> datamap = new LinkedHashMap<>();
             for (final ColumnMeta column : meta.getPrimaryKeys()) {
                 final ColumnAccessor accessor = meta.getAccessor(column);
@@ -347,9 +348,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 
             final Object key = meta.getId().fromEntity(element);
             this.cache.remove(meta, key);
-        } catch (final Exception e) {
-            throw new NormandraException("Unable to delete orientdb document.", e);
-        }
+        });
     }
 
     @Override
