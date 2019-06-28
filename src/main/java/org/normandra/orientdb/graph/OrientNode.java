@@ -330,7 +330,7 @@ public class OrientNode<T> implements Node<T> {
     @Override
     public int getDegree() throws NormandraException {
         final long count;
-        try (final Transaction tx = this.graph.beginTransaction()) {
+        try {
             count = this.vertex.countEdges(Direction.BOTH);
         } catch (final Exception e) {
             throw new NormandraException("Unable to get node degree from [" + this + "].", e);
@@ -347,7 +347,7 @@ public class OrientNode<T> implements Node<T> {
 
     @Override
     public Iterable<Node> getNeighbors() throws NormandraException {
-        try (final Transaction tx = this.graph.beginTransaction()) {
+        try {
             final Set<Node> neighbors = new ArraySet<>();
             for (final Node<?> node : this.graph.queryVertices("select expand(both()) from " + this.element().getId())) {
                 if (!this.equals(node)) {
@@ -365,7 +365,7 @@ public class OrientNode<T> implements Node<T> {
         final EntityMeta edgeMeta = this.graph.getMeta().getEdgeMeta(edgeType);
         final EntityMeta nodeMeta = this.graph.getMeta().getNodeMeta(nodeType);
 
-        try (final Transaction tx = this.graph.beginTransaction()) {
+        try {
             final String label = edgeMeta != null ? "'" + edgeMeta.getTable() + "'" : "";
             final String query;
             if (nodeMeta != null) {
@@ -388,7 +388,7 @@ public class OrientNode<T> implements Node<T> {
 
     @Override
     public Iterable<Node> expand(final int depth) throws NormandraException {
-        try (final Transaction tx = this.graph.beginTransaction()) {
+        try {
             final Set<Node> nodes = new HashSet<>();
             for (final Node node : this.graph.queryVertices("traverse both() from " + this.element().getId() + " maxdepth " + depth)) {
                 if (!this.equals(node)) {
@@ -427,7 +427,7 @@ public class OrientNode<T> implements Node<T> {
             return Collections.emptyList();
         }
 
-        try (final Transaction tx = this.graph.beginTransaction()) {
+        try {
             final List<String> quotedTypes = nodeTypes.stream().map((x) -> "'" + x + "'").collect(Collectors.toList());
             final String typeList = StringUtils.join(quotedTypes, ",");
             final Set<Node<N>> nodes = new HashSet<>();
@@ -444,7 +444,7 @@ public class OrientNode<T> implements Node<T> {
 
     @Override
     public <E> Iterable<Edge<E>> getEdges() throws NormandraException {
-        try (final Transaction tx = this.graph.beginTransaction()) {
+        try {
             return this.graph.queryEdges("select expand(bothE()) from " + this.element().getId());
         } catch (final Exception e) {
             throw new NormandraException("Unable to get edges for [" + this + "].", e);
@@ -503,7 +503,7 @@ public class OrientNode<T> implements Node<T> {
             return Collections.emptyList();
         }
 
-        try (final Transaction tx = this.graph.beginTransaction()) {
+        try {
             return this.graph.queryEdges("select expand(bothE(" + StringUtils.join(filtered, ",") + ")) from " + this.element().getId());
         } catch (final Exception e) {
             throw new NormandraException("Unable to get edges of [" + this + "] by labels " + set + ".", e);

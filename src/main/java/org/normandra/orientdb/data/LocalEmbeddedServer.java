@@ -85,8 +85,7 @@ public class LocalEmbeddedServer {
 
     private boolean spawnThreaded() throws Exception {
         // build local config
-        // this.getClass().getResource("local-server.xml")
-        URL url = new File("/Users/macbits/work/normandra-orientdb/src/main/resources/org.normandra.orientdb.data/local-server.xml").toURL();
+        URL url = this.getClass().getResource("local-server.xml");
         String configXml = IOUtils.toString(url, "UTF-8");
         configXml = configXml.replaceAll("\\$\\{orient\\.user\\}", this.serverUser);
         configXml = configXml.replaceAll("\\$\\{orient\\.password\\}", this.serverUser);

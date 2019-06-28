@@ -269,32 +269,17 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 
     @Override
     public void beginWork() {
-        if (this.isTransactionActive()) {
-            logger.warn("Beginning transaction, but already in pending-work state.");
-        }
         this.database.begin();
     }
 
     @Override
     public void commitWork() {
-        if (!this.isTransactionActive()) {
-            logger.warn("Committing transaction, but not in pending-work state.");
-        }
         this.database.commit();
     }
 
     @Override
     public void rollbackWork() {
-        if (!this.isTransactionActive()) {
-            logger.warn("Rolling back transaction, but not in pending-work state.");
-        }
-        try {
-            this.database.rollback();
-        } catch (final ODatabaseException e) {
-            if (!isNoTransactionActive(e)) {
-                throw new ODatabaseException(e);
-            }
-        }
+        this.database.rollback();
     }
 
     private static final Pattern noTransactionPattern = Pattern.compile("(transaction).+(active)");

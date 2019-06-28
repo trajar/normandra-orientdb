@@ -301,7 +301,7 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
 
         // query documents
         final List<OrientNode> nodes = new ArrayList<>(map.values());
-        try (final Transaction tx = this.beginTransaction()) {
+        try {
             for (final Object key : keyset) {
                 final OIdentifiable document = this.findIdByKey(meta, key);
                 if (document != null) {
@@ -332,7 +332,7 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         }
 
         // query document
-        try (final Transaction tx = this.beginTransaction()) {
+        try {
             final OIdentifiable document = this.findIdByKey(meta, key);
             if (document != null) {
                 final OrientVertex vertex = new OrientVertex(this.graph, document);
@@ -359,7 +359,7 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         }
 
         // query document
-        try (final Transaction tx = this.beginTransaction()) {
+        try {
             // query database
             final OIdentifiable document = this.findIdByKey(meta, key);
             final com.tinkerpop.blueprints.impls.orient.OrientEdge orientEdge = document != null ? this.graph.getEdge(document) : null;
@@ -429,7 +429,7 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
 
         // query documents
         final List<OrientEdge> edges = new ArrayList<>(map.values());
-        try (final Transaction tx = this.beginTransaction()) {
+        try {
             for (final Object key : keyset) {
                 final OIdentifiable document = this.findIdByKey(meta, key);
                 if (document != null) {
