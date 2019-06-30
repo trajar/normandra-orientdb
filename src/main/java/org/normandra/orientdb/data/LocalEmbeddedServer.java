@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.orientechnologies.orient.server.OServer;
-import com.orientechnologies.orient.server.OServerMain;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.http.HttpEntity;
@@ -93,10 +92,12 @@ public class LocalEmbeddedServer {
 
         // start server
         final String xml = configXml;
-        final OServer server = OServerMain.create();
+        final boolean shutdownEngineOnExit = false;
+        final OServer server = new OServer(shutdownEngineOnExit);
         final Runnable worker = () -> {
             try {
-                server.startup(xml).activate();
+                server.startup(xml);
+                server.activate();
             } catch (final Exception e) {
                 logger.error("Unable to start orientdb local server.", e);
             }
