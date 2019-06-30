@@ -196,7 +196,6 @@ package org.normandra.orientdb.data;
 
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.exception.ODatabaseException;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.index.OIndex;
 import com.orientechnologies.orient.core.record.impl.ODocument;
@@ -220,7 +219,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -283,22 +281,6 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
     @Override
     public void rollbackWork() {
         this.database.rollback();
-    }
-
-    private static final Pattern noTransactionPattern = Pattern.compile("(transaction).+(active)");
-
-    private static boolean isNoTransactionActive(final ODatabaseException e) {
-        if (null == e || e.getMessage() == null) {
-            return false;
-        }
-        final String msg = e.getMessage().toLowerCase();
-        if (msg.contains("no transaction active")) {
-            return true;
-        }
-        if (noTransactionPattern.matcher(msg).matches()) {
-            return true;
-        }
-        return false;
     }
 
     @Override
