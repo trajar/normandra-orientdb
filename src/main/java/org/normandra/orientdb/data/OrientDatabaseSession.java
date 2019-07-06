@@ -517,6 +517,15 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         return Collections.unmodifiableList(result);
     }
 
+    @Override
+    public Object load(final EntityMeta meta, final Map<ColumnMeta, Object> data) throws NormandraException {
+        if (!meta.validate(data)) {
+            throw new NormandraException("Invalid data elements for meta [" + meta + "].");
+        }
+        final EntityBuilder builder = new EntityBuilder(this, new OrientDataFactory(this));
+        return builder.build(meta, OrientUtils.unpackValues(meta, data));
+    }
+
     public final ODatabaseDocument database() {
         return this.database;
     }

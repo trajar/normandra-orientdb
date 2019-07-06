@@ -272,6 +272,21 @@ public class OrientUtils {
         return Collections.unmodifiableMap(data);
     }
 
+    public static Map<ColumnMeta, Object> unpackValues(final EntityMeta meta, final Map<ColumnMeta, Object> properties) {
+        if (null == meta || null == properties || properties.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        final Map<ColumnMeta, Object> data = new LinkedHashMap<>();
+        for (final Map.Entry<ColumnMeta, Object> entry : properties.entrySet()) {
+            final ColumnMeta column = entry.getKey();
+            final Object raw = entry.getValue();
+            final Object value = raw != null ? OrientUtils.unpackRaw(column, raw) : null;
+            data.put(column, value);
+        }
+        return Collections.unmodifiableMap(data);
+    }
+
     private static Object unpackRaw(final ColumnMeta column, final Object value) {
         if (null == column || null == value) {
             return null;
@@ -368,7 +383,7 @@ public class OrientUtils {
         if (Enum.class.isAssignableFrom(clazz)) {
             return Enum.valueOf((Class) clazz, value.toString());
         }
-        if (column.isJson()) {
+        if (column.isJson() && value instanceof CharSequence) {
             return DataUtils.jsonToObject(value.toString(), clazz);
         }
         if (String.class.equals(clazz)) {
@@ -383,7 +398,7 @@ public class OrientUtils {
         if (Boolean.class.equals(clazz)) {
             return value;
         }
-        if (Serializable.class.isAssignableFrom(clazz)) {
+        if (Serializable.class.isAssignableFrom(clazz) && byte[].class.isInstance(value)) {
             final Class serialized = clazz;
             return DataUtils.bytesToObject(serialized, (byte[]) value);
         }
