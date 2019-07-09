@@ -247,11 +247,7 @@ public class OrientEntityReference<T> implements EntityReference<T> {
             throw new NormandraException("Unable to locate record for entity [" + this.meta + "] by record [" + this.record + "].");
         }
 
-        final Map<ColumnMeta, Object> data = new LinkedHashMap<>();
-        this.graph.withTransaction((tx) ->
-        {
-            data.putAll(OrientUtils.unpackValues(this.meta, document));
-        });
+        final Map<ColumnMeta, Object> data = OrientUtils.unpackValues(this.meta, document);
         if (data.isEmpty()) {
             return null;
         }
