@@ -76,7 +76,7 @@ public class LocalEmbeddedServer {
             return true;
         }
         if (this.separateProcess) {
-            return this.spawnSeperateProcess();
+            return this.spawnSeparateProcess();
         } else {
             return this.spawnThreaded();
         }
@@ -120,7 +120,7 @@ public class LocalEmbeddedServer {
         return true;
     }
 
-    private boolean spawnSeperateProcess() throws Exception {
+    private boolean spawnSeparateProcess() throws Exception {
         // spawn process
         final File bin = new File(this.orientDir, "bin").getCanonicalFile();
         if (!bin.exists()) {
