@@ -240,8 +240,8 @@ public class OrientHelper implements TestHelper {
         this(false, false);
     }
 
-    public OrientHelper(final boolean serverMode, final boolean separateProcess) {
-        this.useLocalServer = serverMode;
+    public OrientHelper(final boolean localServer, final boolean separateProcess) {
+        this.useLocalServer = localServer;
         this.separateProcess = separateProcess;
     }
 
