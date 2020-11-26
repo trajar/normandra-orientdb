@@ -201,9 +201,7 @@ import org.normandra.data.DataHandler;
 import org.normandra.meta.ColumnMeta;
 import org.normandra.meta.EntityMeta;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -213,8 +211,6 @@ import java.util.Map;
  */
 public class OrientDataHandler implements DataHandler {
     private final OrientDatabaseSession session;
-
-    private final List<ODocument> documents = new ArrayList<>();
 
     OrientDataHandler(OrientDatabaseSession session) {
         this.session = session;
@@ -244,7 +240,6 @@ public class OrientDataHandler implements DataHandler {
         }
 
         if (data.isEmpty()) {
-            this.documents.remove(document);
             document.delete();
             return true;
         }
@@ -263,11 +258,6 @@ public class OrientDataHandler implements DataHandler {
         }
 
         final ODocument saved = document.save();
-        if (null == saved) {
-            return false;
-        }
-
-        this.documents.add(saved);
-        return true;
+        return saved != null;
     }
 }

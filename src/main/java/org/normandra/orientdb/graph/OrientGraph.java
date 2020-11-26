@@ -200,17 +200,16 @@ import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import org.normandra.NormandraException;
-import org.normandra.Transaction;
-import org.normandra.TransactionCallable;
 import org.normandra.cache.EntityCache;
 import org.normandra.data.DataHolderFactory;
 import org.normandra.data.EntityReference;
-import org.normandra.data.GraphDataHandler;
 import org.normandra.data.StaticEntityReference;
 import org.normandra.graph.*;
+import org.normandra.meta.ColumnMeta;
 import org.normandra.meta.EntityMeta;
 import org.normandra.meta.GraphMeta;
 import org.normandra.orientdb.data.*;
+import org.normandra.property.MemoryPropertyModel;
 import org.normandra.property.PropertyFilter;
 import org.normandra.property.PropertyModel;
 import org.normandra.util.EntityPersistence;
@@ -259,14 +258,14 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         final OrientVertex vertex = this.withTransaction(tx -> {
             // save entity using property model
             final String schemaName = meta.getTable();
-            final String clusterName = null;
-            final OrientVertex v = graph.addVertex(schemaName, clusterName);
+            final EntityPersistence persistence = new EntityPersistence(OrientGraph.this);
+            final MemoryPropertyModel model = new MemoryPropertyModel();
+            persistence.save(meta, instance, model);
+            final Object[] fields = OrientUtils.packValuesAsArray(model.get(), meta);
+            final OrientVertex v = graph.addVertex("class:" + schemaName, fields);
             if (null == v) {
                 return null;
             }
-            final PropertyModel model = buildModel(meta, v);
-            final GraphDataHandler handler = new GraphDataHandler(model);
-            new EntityPersistence(OrientGraph.this).save(meta, instance, handler);
             tx.success();
             return v;
         });

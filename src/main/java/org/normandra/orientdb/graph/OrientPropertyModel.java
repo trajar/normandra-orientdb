@@ -194,7 +194,6 @@
 
 package org.normandra.orientdb.graph;
 
-import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import org.apache.commons.lang.NullArgumentException;
 import org.normandra.NormandraException;
@@ -206,6 +205,8 @@ import org.normandra.property.PropertyFilter;
 import org.normandra.property.PropertyModel;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 public class OrientPropertyModel implements PropertyModel {
@@ -240,29 +241,37 @@ public class OrientPropertyModel implements PropertyModel {
     }
 
     @Override
-    public void put(final Map<ColumnMeta, Object> data) throws NormandraException {
+    public Map<String, Object> fields(final Map<ColumnMeta, Object> data) {
         if (null == data || data.isEmpty()) {
-            return;
+            return Collections.emptyMap();
         }
 
-        boolean updated = false;
+        final Map<String, Object> fields = new HashMap<>(data.size());
         for (final Map.Entry<ColumnMeta, Object> entry : data.entrySet()) {
             final ColumnMeta column = entry.getKey();
             if (this.filter.accept(this.meta, column)) {
                 final Object packed = OrientUtils.packValue(column, entry.getValue());
                 if (packed != null) {
                     final String name = column.getName();
-                    final OType type = OrientUtils.columnType(column);
-                    this.document.setProperty(name, packed, type);
-                    updated = true;
+                    fields.put(name, packed);
                 }
             }
         }
+        return Collections.unmodifiableMap(fields);
+    }
 
-        if (!updated) {
+    @Override
+    public void put(final Map<ColumnMeta, Object> data) throws NormandraException {
+        if (null == data || data.isEmpty()) {
             return;
         }
 
+        final Object[] fields = OrientUtils.packValuesAsArray(data, this.meta, this.filter);
+        if (fields.length <= 0) {
+            return;
+        }
+
+        this.document.setProperties(fields);
         this.document.save();
     }
 

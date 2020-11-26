@@ -295,9 +295,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         this.withTransaction(tx -> {
             final OrientDataHandler handler = new OrientDataHandler(OrientDatabaseSession.this);
             new EntityPersistence(OrientDatabaseSession.this).save(meta, element, handler);
-
             tx.success();
-
             final Object key = meta.getId().fromEntity(element);
             cache.put(meta, key, element);
         });

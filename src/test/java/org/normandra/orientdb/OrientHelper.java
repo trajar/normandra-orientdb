@@ -220,6 +220,8 @@ public class OrientHelper implements TestHelper {
 
     private GraphManager graphManager;
 
+    private File databaseDir = new File("databases");
+
     private File embeddedDir = new File("target/orient-test");
 
     private String databaseName = "test_me_db";
@@ -232,7 +234,7 @@ public class OrientHelper implements TestHelper {
 
     private final boolean separateProcess;
 
-    private final File orientDist = new File("src/test/dist/orientdb-3.0.21.zip");
+    private final File orientDist = new File("src/test/dist/orientdb-3.0.35.zip");
 
     public OrientHelper() {
         this(false, false);
@@ -274,6 +276,7 @@ public class OrientHelper implements TestHelper {
 
     @Override
     public void create(DatabaseMetaBuilder builder) throws Exception {
+        ensurePaths(databaseDir);
         Orient.instance().startup();
         if (useLocalServer) {
             database = OrientDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, separateProcess, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
@@ -286,6 +289,7 @@ public class OrientHelper implements TestHelper {
 
     @Override
     public void create(GraphMetaBuilder builder) throws Exception {
+        ensurePaths(databaseDir);
         Orient.instance().startup();
         if (useLocalServer) {
             database = OrientGraphDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
@@ -296,19 +300,15 @@ public class OrientHelper implements TestHelper {
         graphManager = new GraphManagerFactory((OrientGraphDatabase) this.database, (GraphMeta) this.database.getMeta()).create();
     }
 
-    private void ensurePaths(final File dir) {
+    private void ensurePaths(final File dir) throws Exception {
         if (dir.exists()) {
-            try {
-                FileUtils.deleteDirectory(dir);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            FileUtils.deleteDirectory(dir);
         }
         dir.mkdirs();
     }
 
     @Override
-    public void cleanup() {
+    public void cleanup() throws Exception {
         if (entityManager != null) {
             entityManager.close();
             entityManager = null;
@@ -324,12 +324,11 @@ public class OrientHelper implements TestHelper {
 
         Orient.instance().shutdown();
 
+        if (databaseDir.exists()) {
+            FileUtils.forceDelete(embeddedDir);
+        }
         if (embeddedDir.exists()) {
-            try {
-                FileUtils.forceDelete(embeddedDir);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            FileUtils.forceDelete(embeddedDir);
         }
     }
 

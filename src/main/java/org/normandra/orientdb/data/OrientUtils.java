@@ -200,6 +200,8 @@ import com.orientechnologies.orient.core.db.record.ORecordLazySet;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import org.normandra.meta.*;
+import org.normandra.property.EmptyPropertyFilter;
+import org.normandra.property.PropertyFilter;
 import org.normandra.util.ArraySet;
 import org.normandra.util.DataUtils;
 
@@ -326,6 +328,39 @@ public class OrientUtils {
         }
 
         return unpackPrimitive(column, clazz, value);
+    }
+
+    public static Object[] packValuesAsArray(final Map<ColumnMeta, Object> data, final EntityMeta meta) {
+        return packValuesAsArray(data, meta, EmptyPropertyFilter.getInstance());
+    }
+
+    public static Object[] packValuesAsArray(final Map<ColumnMeta, Object> data, final EntityMeta meta, final PropertyFilter filter) {
+        if (null == data || data.isEmpty()) {
+            return new Object[0];
+        }
+
+        final Map<String, Object> fields = new HashMap<>(data.size());
+        for (final Map.Entry<ColumnMeta, Object> entry : data.entrySet()) {
+            final ColumnMeta column = entry.getKey();
+            if (filter.accept(meta, column)) {
+                final Object packed = OrientUtils.packValue(column, entry.getValue());
+                if (packed != null) {
+                    final String name = column.getName();
+                    fields.put(name, packed);
+                }
+            }
+        }
+
+        if (fields.isEmpty()) {
+            return new Object[0];
+        }
+
+        final List<Object> list = new ArrayList<>(fields.size() * 2);
+        for (final Map.Entry<String, Object> entry : fields.entrySet()) {
+            list.add(entry.getKey());
+            list.add(entry.getValue());
+        }
+        return list.stream().toArray();
     }
 
     public static Object packValue(final ColumnMeta column, final Object value) {

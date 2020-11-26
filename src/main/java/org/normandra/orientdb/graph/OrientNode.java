@@ -205,6 +205,7 @@ import org.normandra.graph.Edge;
 import org.normandra.graph.Node;
 import org.normandra.meta.EntityMeta;
 import org.normandra.orientdb.data.OrientUtils;
+import org.normandra.property.MemoryPropertyModel;
 import org.normandra.property.PropertyModel;
 import org.normandra.util.ArraySet;
 import org.normandra.util.EntityPersistence;
@@ -304,15 +305,16 @@ public class OrientNode<T> implements Node<T> {
 
         final com.tinkerpop.blueprints.impls.orient.OrientEdge edge = this.graph.withTransaction(tx -> {
             final String schemaName = meta.getTable();
+            final String clusterName = null;
             final com.tinkerpop.blueprints.impls.orient.OrientVertex otherNode = ((OrientNode) node).element();
-            final com.tinkerpop.blueprints.impls.orient.OrientEdge e = this.vertex.addEdge(schemaName, otherNode, schemaName);
+            final EntityPersistence persistence = new EntityPersistence(this.graph);
+            final MemoryPropertyModel model = new MemoryPropertyModel();
+            persistence.save(meta, entity, model);
+            final Object[] fields = OrientUtils.packValuesAsArray(model.get(), meta);
+            final com.tinkerpop.blueprints.impls.orient.OrientEdge e = this.vertex.addEdge(schemaName, otherNode, schemaName, clusterName, fields);
             if (null == e) {
                 return null;
             }
-
-            final PropertyModel model = this.graph.buildModel(meta, e);
-            final GraphDataHandler handler = new GraphDataHandler(model);
-            new EntityPersistence(this.graph).save(meta, entity, handler);
             tx.success();
             return e;
         });
