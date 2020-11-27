@@ -211,6 +211,7 @@ import org.normandra.cache.EntityCache;
 import org.normandra.data.ColumnAccessor;
 import org.normandra.meta.ColumnMeta;
 import org.normandra.meta.EntityMeta;
+import org.normandra.orientdb.data.impl.OrientDataFactory;
 import org.normandra.orientdb.graph.OrientEdge;
 import org.normandra.orientdb.graph.OrientNode;
 import org.normandra.util.EntityBuilder;
@@ -233,9 +234,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 
     protected final ODatabaseDocument database;
 
-    protected final Map<String, OrientQuery> statementsByName;
-
-    public OrientDatabaseSession(final ODatabaseDocument db, final Map<String, OrientQuery> statements, final EntityCache cache) {
+    public OrientDatabaseSession(final ODatabaseDocument db, final EntityCache cache) {
         if (null == db) {
             throw new NullArgumentException("document database");
         }
@@ -244,7 +243,6 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         }
         this.cache = cache;
         this.database = db;
-        this.statementsByName = new LinkedHashMap<>(statements);
     }
 
     @Override
@@ -333,24 +331,13 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 
     @Override
     public DatabaseQuery query(final EntityMeta meta, final String queryOrName, final Map<String, Object> params) throws NormandraException {
-        final OrientQuery query = this.statementsByName.get(queryOrName);
-        if (query != null) {
-            return this.executeNamedQuery(meta, query, params);
-        } else {
-            return this.executeDynamicQuery(meta, queryOrName, params);
-        }
+        return this.executeDynamicQuery(meta, queryOrName, params);
     }
 
     @Override
     public Object scalarQuery(final String queryOrName) throws NormandraException {
         try {
-            final OrientQuery query = this.statementsByName.get(queryOrName);
-            final OrientSelfClosingEntityQuery synchronizedQuery;
-            if (query != null) {
-                synchronizedQuery = new OrientSelfClosingEntityQuery(this.database, query.getQuery(), Collections.emptyList());
-            } else {
-                synchronizedQuery = new OrientSelfClosingEntityQuery(this.database, queryOrName, Collections.emptyList());
-            }
+            final OrientSelfClosingEntityQuery synchronizedQuery = new OrientSelfClosingEntityQuery(this.database, queryOrName, Collections.emptyList());
             for (final ODocument document : synchronizedQuery) {
                 final Object[] values = document.fieldValues();
                 if (values != null && values.length > 0) {
@@ -521,7 +508,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
             throw new NormandraException("Invalid data elements for meta [" + meta + "].");
         }
         final EntityBuilder builder = new EntityBuilder(this, new OrientDataFactory(this));
-        return builder.build(meta, OrientUtils.unpackValues(meta, data));
+        return builder.build(meta, data);
     }
 
     public final ODatabaseDocument database() {

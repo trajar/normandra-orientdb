@@ -152,22 +152,6 @@ public class OrientSelfClosingPropertyQuery implements PropertyQuery {
     }
 
     @Override
-    public List<Map<String, Object>> list() {
-        final List<Map<String, Object>> list = new ArrayList<>();
-        for (final Map<String, Object> item : this) {
-            if (item != null) {
-                list.add(item);
-            }
-        }
-        return Collections.unmodifiableList(list);
-    }
-
-    @Override
-    public boolean empty() {
-        return this.first() != null;
-    }
-
-    @Override
     public Iterator<Map<String, Object>> iterator() {
         // execute query
         final Iterator<OResult> results = this.execute();

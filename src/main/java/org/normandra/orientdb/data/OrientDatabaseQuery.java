@@ -240,22 +240,6 @@ public class OrientDatabaseQuery<T> implements DatabaseQuery<T> {
     }
 
     @Override
-    public List<T> list() {
-        final List<T> list = new ArrayList<>();
-        for (final T item : this) {
-            if (item != null) {
-                list.add(item);
-            }
-        }
-        return Collections.unmodifiableList(list);
-    }
-
-    @Override
-    public boolean empty() {
-        return this.first() != null;
-    }
-
-    @Override
     public Iterator<T> iterator() {
         final Iterator<ODocument> itr = this.query.iterator();
         return new Iterator<T>() {

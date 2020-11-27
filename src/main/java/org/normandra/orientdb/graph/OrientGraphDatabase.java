@@ -277,7 +277,7 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
                 if (api.isUseLightweightEdges() != useLightweightEdges) {
                     api.setUseLightweightEdges(useLightweightEdges);
                 }
-                return new OrientGraph(this.meta, api, this.statementsByName, this.cache.create());
+                return new OrientGraph(this.meta, api, this.cache.create());
             } catch (final OSecurityAccessException e) {
                 logger.warn("Unable to create orient graph from session [access] (retry " + (i + 1) + ").", e);
                 db.close();

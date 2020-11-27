@@ -192,7 +192,7 @@
  *    limitations under the License.
  */
 
-package org.normandra.orientdb.data;
+package org.normandra.orientdb.data.impl;
 
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.record.impl.ODocument;
@@ -200,6 +200,9 @@ import org.normandra.NormandraException;
 import org.normandra.data.DataHolder;
 import org.normandra.meta.ColumnMeta;
 import org.normandra.meta.EntityMeta;
+import org.normandra.orientdb.data.OrientDatabaseSession;
+import org.normandra.orientdb.data.OrientElementIdentity;
+import org.normandra.orientdb.data.OrientUtils;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -226,15 +229,6 @@ public class OrientLazyDataHolder implements DataHolder {
         this.entity = meta;
         this.column = column;
         this.key = key;
-    }
-
-    @Override
-    public boolean isEmpty() {
-        try {
-            return this.ensureResults().isEmpty();
-        } catch (final Exception e) {
-            throw new IllegalStateException("Unable to query lazy loaded results from [" + this.entity + "] column [" + this.column + "].", e);
-        }
     }
 
     @Override

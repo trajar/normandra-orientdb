@@ -274,21 +274,6 @@ public class OrientUtils {
         return Collections.unmodifiableMap(data);
     }
 
-    public static Map<ColumnMeta, Object> unpackValues(final EntityMeta meta, final Map<ColumnMeta, Object> properties) {
-        if (null == meta || null == properties || properties.isEmpty()) {
-            return Collections.emptyMap();
-        }
-
-        final Map<ColumnMeta, Object> data = new LinkedHashMap<>();
-        for (final Map.Entry<ColumnMeta, Object> entry : properties.entrySet()) {
-            final ColumnMeta column = entry.getKey();
-            final Object raw = entry.getValue();
-            final Object value = raw != null ? OrientUtils.unpackRaw(column, raw) : null;
-            data.put(column, value);
-        }
-        return Collections.unmodifiableMap(data);
-    }
-
     private static Object unpackRaw(final ColumnMeta column, final Object value) {
         if (null == column || null == value) {
             return null;
@@ -408,32 +393,23 @@ public class OrientUtils {
         }
         if (value instanceof OIdentifiable) {
             return ((OIdentifiable) value).getIdentity();
-        }
-        if (UUID.class.equals(clazz)) {
+        } else if (UUID.class.equals(clazz)) {
             return DataUtils.stringToUUID(value.toString());
-        }
-        if (Date.class.equals(clazz)) {
+        } else if (Date.class.equals(clazz)) {
             return value;
-        }
-        if (Enum.class.isAssignableFrom(clazz)) {
+        } else if (Enum.class.isAssignableFrom(clazz)) {
             return Enum.valueOf((Class) clazz, value.toString());
-        }
-        if (column.isJson() && value instanceof CharSequence) {
+        } else if (column.isJson() && value instanceof CharSequence) {
             return DataUtils.jsonToObject(value.toString(), clazz);
-        }
-        if (String.class.equals(clazz)) {
+        } else if (String.class.equals(clazz)) {
             return value;
-        }
-        if (Number.class.isAssignableFrom(clazz)) {
+        } else if (Number.class.isAssignableFrom(clazz)) {
             return value;
-        }
-        if (byte[].class.equals(clazz)) {
+        } else if (byte[].class.equals(clazz)) {
             return value;
-        }
-        if (Boolean.class.equals(clazz)) {
+        } else if (Boolean.class.equals(clazz)) {
             return value;
-        }
-        if (Serializable.class.isAssignableFrom(clazz) && byte[].class.isInstance(value)) {
+        } else if (Serializable.class.isAssignableFrom(clazz) && byte[].class.isInstance(value)) {
             final Class serialized = clazz;
             return DataUtils.bytesToObject(serialized, (byte[]) value);
         }

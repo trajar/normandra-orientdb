@@ -192,107 +192,32 @@
  *    limitations under the License.
  */
 
-package org.normandra.orientdb.data;
+package org.normandra.orientdb.data.impl;
 
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.executor.OResult;
-import com.orientechnologies.orient.core.sql.executor.OResultSet;
-import org.normandra.NormandraException;
-import org.normandra.data.DataHolder;
+import org.normandra.data.*;
 import org.normandra.meta.EntityMeta;
+import org.normandra.orientdb.data.OrientElementIdentity;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.lang.reflect.Field;
 
 /**
- * a lazy-loaded orientdb data holder based on query string
+ * a factory using orientdb's graph-relation properties for single/multi-joined columns
  * <p>
- * Date: 4/5/14
+ * Date: 9/23/14
  */
-public class OrientLazyQueryHolder implements DataHolder {
-    private final AtomicBoolean loaded = new AtomicBoolean(false);
-
-    private final OrientDatabaseSession session;
-
-    private final EntityMeta entity;
-
-    private final boolean collection;
-
-    private final String query;
-
-    private final List<Object> parameters;
-
-    private final OrientDocumentHandler handler;
-
-    private final List<ODocument> documents = new ArrayList<>();
-
-    public OrientLazyQueryHolder(final OrientDatabaseSession session, final EntityMeta meta, final boolean collection, final String query, final List<Object> params, final OrientDocumentHandler handler) {
-        this.session = session;
-        this.entity = meta;
-        this.collection = collection;
-        this.query = query;
-        this.parameters = new ArrayList<>(params);
-        this.handler = handler;
+public class OrientAccessorFactory implements ColumnAccessorFactory {
+    @Override
+    public ColumnAccessor createBasic(Field field, Class<?> clazz) {
+        return new BasicColumnAccessor(field, clazz);
     }
 
     @Override
-    public boolean isEmpty() {
-        try {
-            return this.ensureResults().isEmpty();
-        } catch (final Exception e) {
-            throw new IllegalStateException("Unable to query lazy loaded results from [" + this.entity + "].", e);
-        }
+    public ColumnAccessor createManyJoin(Field field, EntityMeta meta, boolean lazy) {
+        return new ManyJoinColumnAccessor(field, meta, lazy, new OrientElementIdentity(meta));
     }
 
     @Override
-    public Object get() throws NormandraException {
-        final Collection<ODocument> results = this.ensureResults();
-        if (null == results || results.isEmpty()) {
-            return null;
-        }
-        try {
-            if (this.collection) {
-                final List<Object> items = new ArrayList<>(results.size());
-                for (final ODocument doc : results) {
-                    final Object item = this.handler.convert(doc);
-                    if (item != null) {
-                        items.add(item);
-                    }
-                }
-                return Collections.unmodifiableCollection(items);
-            } else {
-                return this.handler.convert(results.iterator().next());
-            }
-        } catch (final Exception e) {
-            throw new NormandraException("Unable to toEntity lazy loaded results for entity [" + this.entity + "].", e);
-        }
-    }
-
-    private List<ODocument> ensureResults() throws NormandraException {
-        if (this.loaded.get()) {
-            return Collections.unmodifiableList(this.documents);
-        }
-
-        try {
-            this.documents.clear();
-            try (final OResultSet results = this.session.database().query(this.query, parameters.toArray())) {
-                while (results.hasNext()) {
-                    final OResult item = results.next();
-                    if (item.isRecord()) {
-                        final ODocument doc = this.session.database.load(item.getRecord().get());
-                        if (doc != null) {
-                            this.documents.add(doc);
-                        }
-                    }
-                }
-            }
-            this.loaded.getAndSet(true);
-        } catch (final Exception e) {
-            throw new NormandraException("Unable to get orientdb document by query [" + this.query + "].", e);
-        }
-        return Collections.unmodifiableList(this.documents);
+    public ColumnAccessor createSingleJoin(Field field, EntityMeta meta, boolean lazy) {
+        return new SingleJoinColumnAccessor(field, meta, lazy, new OrientElementIdentity(meta));
     }
 }

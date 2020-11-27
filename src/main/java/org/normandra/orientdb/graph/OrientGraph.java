@@ -205,10 +205,12 @@ import org.normandra.data.DataHolderFactory;
 import org.normandra.data.EntityReference;
 import org.normandra.data.StaticEntityReference;
 import org.normandra.graph.*;
-import org.normandra.meta.ColumnMeta;
 import org.normandra.meta.EntityMeta;
 import org.normandra.meta.GraphMeta;
-import org.normandra.orientdb.data.*;
+import org.normandra.orientdb.data.impl.OrientDataFactory;
+import org.normandra.orientdb.data.OrientDatabaseSession;
+import org.normandra.orientdb.data.OrientSelfClosingEntityQuery;
+import org.normandra.orientdb.data.OrientUtils;
 import org.normandra.property.MemoryPropertyModel;
 import org.normandra.property.PropertyFilter;
 import org.normandra.property.PropertyModel;
@@ -230,8 +232,8 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
 
     private final com.tinkerpop.blueprints.impls.orient.OrientGraph graph;
 
-    public OrientGraph(final GraphMeta meta, final com.tinkerpop.blueprints.impls.orient.OrientGraph graph, final Map<String, OrientQuery> statements, final EntityCache cache) {
-        super(graph.getRawGraph(), statements, cache);
+    public OrientGraph(final GraphMeta meta, final com.tinkerpop.blueprints.impls.orient.OrientGraph graph, final EntityCache cache) {
+        super(graph.getRawGraph(), cache);
         this.meta = meta;
         this.graph = graph;
     }

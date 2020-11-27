@@ -210,9 +210,10 @@ import org.normandra.cache.EntityCacheFactory;
 import org.normandra.data.ColumnAccessorFactory;
 import org.normandra.generator.IdGenerator;
 import org.normandra.meta.*;
+import org.normandra.orientdb.data.impl.OrientAccessorFactory;
+import org.normandra.orientdb.data.impl.OrientIdGenerator;
 import org.normandra.util.ArraySet;
 import org.normandra.util.CaseUtils;
-import org.normandra.util.QueryUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -223,7 +224,6 @@ import javax.persistence.TableGenerator;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class OrientDatabase implements Database {
@@ -308,8 +308,6 @@ public class OrientDatabase implements Database {
 
     protected final DatabaseConstruction constructionMode;
 
-    protected final Map<String, OrientQuery> statementsByName = new ConcurrentHashMap<>();
-
     private final DatabaseMeta meta;
 
     protected OrientDatabase(final String url, final OrientPool pool, final EntityCacheFactory cache, final DatabaseConstruction mode, final DatabaseMeta meta) {
@@ -333,13 +331,13 @@ public class OrientDatabase implements Database {
         return this.meta;
     }
 
-    final ODatabaseDocument createDatabase() {
+    public final ODatabaseDocument createDatabase() {
         return this.pool.acquire();
     }
 
     @Override
     public OrientDatabaseSession createSession() {
-        return new OrientDatabaseSession(this.createDatabase(), this.statementsByName, this.cache.create());
+        return new OrientDatabaseSession(this.createDatabase(), this.cache.create());
     }
 
     @Override
@@ -501,36 +499,6 @@ public class OrientDatabase implements Database {
                 database.command(new OCommandSQL("CREATE INDEX " + indexName + " ON " + schemaName + " (" + StringUtils.join(names, ",") + ") " + uniqueness)).execute();
             }
         }
-    }
-
-    @Override
-    public boolean registerQuery(final EntityMeta entity, final String name, final String query) throws NormandraException {
-        if (null == name || name.isEmpty()) {
-            return false;
-        }
-        if (null == query || query.isEmpty()) {
-            return false;
-        }
-        if (this.statementsByName.containsKey(name)) {
-            return false;
-        }
-
-        final String tableQuery = QueryUtils.prepare(entity, query);
-        if (null == tableQuery || tableQuery.isEmpty()) {
-            return false;
-        }
-
-        final OrientQuery prepared = new OrientQuery(query, tableQuery);
-        this.statementsByName.put(name, prepared);
-        return true;
-    }
-
-    @Override
-    public boolean unregisterQuery(final String name) {
-        if (null == name || name.isEmpty()) {
-            return false;
-        }
-        return this.statementsByName.remove(name) != null;
     }
 
     private static Collection<String> getClasses(final ODatabaseDocument database) {

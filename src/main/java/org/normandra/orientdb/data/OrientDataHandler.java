@@ -230,7 +230,7 @@ public class OrientDataHandler implements DataHandler {
         final OIdentifiable existing = this.session.findIdByMap(entity, keymap);
         if (existing != null) {
             document = this.session.findDocument(existing);
-        } else if (!keymap.isEmpty()) {
+        } else {
             final String schemaName = entity.getTable();
             document = this.session.database().newInstance(schemaName);
         }
