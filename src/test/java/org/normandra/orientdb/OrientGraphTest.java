@@ -93,31 +93,4 @@ public class OrientGraphTest extends GraphTest {
         }
         Assert.assertEquals(2, numSaved);
     }
-
-    @Test
-    public void testPerformance() throws Exception {
-        final GraphManager manager = helper.getGraph();
-        final long testStart = System.currentTimeMillis();
-        final List<Node> nodes = new ArrayList<>();
-        for (int i = 0; i < 1000; i++) {
-            long start = System.currentTimeMillis();
-            manager.withTransaction(tx -> {
-                Node node = manager.addNode(new SimpleNode("node-" + UUID.randomUUID().toString()));
-                Assert.assertNotNull(node);
-                nodes.add(node);
-                Node other = manager.addNode(new SimpleNode("node-" + UUID.randomUUID().toString()));
-                Assert.assertNotNull(other);
-                nodes.add(other);
-                for (int j = 0; j < 25; j++) {
-                    Edge edge = node.createEdge(other, new SimpleEdge("edge-" + UUID.randomUUID().toString()));
-                    Assert.assertNotNull(edge);
-                }
-                tx.success();
-            });
-            long duration = System.currentTimeMillis() - start;
-            System.out.println("Added nodes [" + nodes.get(nodes.size() - 1) + "], [" + nodes.get(nodes.size() - 1) + "] which took [" + duration + "] msec.");
-        }
-        final long testDuration = System.currentTimeMillis() - testStart;
-        System.out.println("Added [" + nodes.size() + "] which took [" + testDuration + "] msec.");
-    }
 }
