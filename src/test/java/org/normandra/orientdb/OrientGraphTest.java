@@ -12,8 +12,8 @@ import java.util.stream.Collectors;
 
 public class OrientGraphTest extends GraphTest {
     public OrientGraphTest() {
-//      super(new OrientHelper(true, true));
         super(new OrientHelper());
+//      super(new OrientHelper(true, true));
     }
 
     @Test

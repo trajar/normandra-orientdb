@@ -236,6 +236,8 @@ public class OrientHelper implements TestHelper {
 
     private final File orientDist = new File("src/test/dist/orientdb-3.0.35.zip");
 
+    private final File extractedDistro = new File("target/localServerDistro");
+
     public OrientHelper() {
         this(false, false);
     }
@@ -271,12 +273,24 @@ public class OrientHelper implements TestHelper {
 
     public File extractDistro() throws IOException {
         System.setProperty("ORIENTDB_ROOT_PASSWORD", serverPwd);
-        return extract(orientDist, new File("target/localServerDistro").getCanonicalFile());
+        return extract(orientDist, extractedDistro);
+    }
+
+    private void cleanupDirs() throws Exception {
+        if (databaseDir.exists()) {
+            FileUtils.forceDelete(databaseDir);
+        }
+        if (embeddedDir.exists()) {
+            FileUtils.forceDelete(embeddedDir);
+        }
+        if (extractedDistro.exists()) {
+            FileUtils.forceDelete(extractedDistro);
+        }
     }
 
     @Override
     public void create(DatabaseMetaBuilder builder) throws Exception {
-        ensurePaths(databaseDir);
+        cleanupDirs();
         Orient.instance().startup();
         if (useLocalServer) {
             database = OrientDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, separateProcess, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
@@ -289,10 +303,10 @@ public class OrientHelper implements TestHelper {
 
     @Override
     public void create(GraphMetaBuilder builder) throws Exception {
-        ensurePaths(databaseDir);
+        cleanupDirs();
         Orient.instance().startup();
         if (useLocalServer) {
-            database = OrientGraphDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+            database = OrientGraphDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, separateProcess, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
         } else {
             ensurePaths(embeddedDir);
             database = OrientGraphDatabase.createLocalFile(embeddedDir, databaseName, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
@@ -323,13 +337,7 @@ public class OrientHelper implements TestHelper {
         }
 
         Orient.instance().shutdown();
-
-        if (databaseDir.exists()) {
-            FileUtils.forceDelete(embeddedDir);
-        }
-        if (embeddedDir.exists()) {
-            FileUtils.forceDelete(embeddedDir);
-        }
+        cleanupDirs();
     }
 
     private static File extract(final File archivePath, final File destinationPath) throws IOException {

@@ -239,10 +239,10 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
     }
 
     public static OrientGraphDatabase createLocalServer(
-            final File path, final String database, final String userid, final String password,
+            final File path, final String database, final String userid, final String password, final boolean separateProcess,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final GraphMetaBuilder metaBuilder) {
-        final OrientPool pool = new LocalServerOrientPool(path, database, userid, password);
+        final OrientPool pool = new LocalServerOrientPool(path, database, userid, password, separateProcess);
         final GraphMeta meta = metaBuilder.withColumnFactory(columnFactory).create();
         return new OrientGraphDatabase("remote:localhost", pool, factory, mode, meta);
     }

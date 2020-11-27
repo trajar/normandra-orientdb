@@ -96,6 +96,7 @@ public class LocalEmbeddedServer {
         final OServer server = new OServer(shutdownEngineOnExit);
         final Runnable worker = () -> {
             try {
+                logger.debug("Starting local embedded server in thread from resource [" + url + "].");
                 server.startup(xml);
                 server.activate();
             } catch (final Exception e) {
@@ -137,6 +138,7 @@ public class LocalEmbeddedServer {
             logger.trace("Setting local server root password.");
             startup.environment().put("JAVA_OPTS", "-DORIENTDB_ROOT_PASSWORD=" + rootPwd);
         }
+        logger.debug("Starting local embedded server in separate process [" + bin + "].");
         this.activeProcess = startup.start();
 
         // register shutdown
