@@ -245,7 +245,7 @@ public class OrientDatabase implements Database {
             final String url, final String database, final String userid, final String password,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final Collection<Class> types) {
-        final OrientPool pool = new FixedOrientPool(url, database, userid, password);
+        final OrientPool pool = new DynamicOrientPool(url, database, userid, password);
         final AnnotationParser parser = new AnnotationParser(columnFactory, types);
         final DatabaseMeta meta = new DatabaseMeta(parser.read());
         return new OrientDatabase(url, pool, factory, mode, meta);
@@ -255,7 +255,7 @@ public class OrientDatabase implements Database {
             final String url, final String database, final String userid, final String password,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final DatabaseMetaBuilder metaBuilder) {
-        final OrientPool pool = new FixedOrientPool(url, database, userid, password);
+        final OrientPool pool = new DynamicOrientPool(url, database, userid, password);
         final DatabaseMeta meta = metaBuilder.withColumnFactory(columnFactory).create();
         return new OrientDatabase(url, pool, factory, mode, meta);
     }
@@ -310,7 +310,7 @@ public class OrientDatabase implements Database {
 
     private final DatabaseMeta meta;
 
-    protected OrientDatabase(final String url, final OrientPool pool, final EntityCacheFactory cache, final DatabaseConstruction mode, final DatabaseMeta meta) {
+    public OrientDatabase(final String url, final OrientPool pool, final EntityCacheFactory cache, final DatabaseConstruction mode, final DatabaseMeta meta) {
         if (null == cache) {
             throw new NullArgumentException("cache factory");
         }

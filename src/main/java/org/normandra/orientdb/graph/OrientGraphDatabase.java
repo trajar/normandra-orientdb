@@ -223,7 +223,7 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
             final String url, final String database, final String userid, final String password,
             final EntityCacheFactory factory, final DatabaseConstruction mode,
             final GraphMetaBuilder metaBuilder) {
-        final OrientPool pool = new FixedOrientPool(url, database, userid, password);
+        final OrientPool pool = new DynamicOrientPool(url, database, userid, password);
         final GraphMeta meta = metaBuilder.withColumnFactory(columnFactory).create();
         return new OrientGraphDatabase(url, pool, factory, mode, meta);
     }
@@ -251,7 +251,7 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
 
     private final GraphMeta meta;
 
-    protected OrientGraphDatabase(final String url, final OrientPool pool, final EntityCacheFactory cache, final DatabaseConstruction mode, final GraphMeta meta) {
+    public OrientGraphDatabase(final String url, final OrientPool pool, final EntityCacheFactory cache, final DatabaseConstruction mode, final GraphMeta meta) {
         super(url, pool, cache, mode, meta);
         this.meta = meta;
     }
