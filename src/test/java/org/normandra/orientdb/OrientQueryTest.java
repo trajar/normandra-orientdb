@@ -48,13 +48,13 @@ public class OrientQueryTest extends QueryTest {
         final Map<String, Object> params = new TreeMap<>();
         params.put("id", dog.getId());
 
-        final DatabaseQuery<DogEntity> queryByTable = manager.query(DogEntity.class, "dog_by_id", params);
+        final DatabaseQuery<DogEntity> queryByTable = manager.query(DogEntity.class, "select from animal where id = :id", params);
         Assert.assertNotNull(queryByTable);
         Collection<?> elements = queryByTable.list();
         Assert.assertNotNull(queryByTable);
         Assert.assertEquals(1, elements.size());
 
-        final DatabaseQuery<AnimalEntity> queryNamed = manager.query(AnimalEntity.class, "Animal.findByID", params);
+        final DatabaseQuery<AnimalEntity> queryNamed = manager.query(AnimalEntity.class, "select from animal where id = :id", params);
         Assert.assertNotNull(queryNamed);
         elements = queryNamed.list();
         Assert.assertNotNull(queryNamed);
