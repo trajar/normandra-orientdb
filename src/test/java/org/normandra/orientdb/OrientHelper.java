@@ -198,7 +198,7 @@ import com.orientechnologies.orient.core.Orient;
 import org.apache.commons.io.FileUtils;
 import org.normandra.*;
 import org.normandra.cache.MapFactory;
-import org.normandra.cache.MemoryCache;
+import org.normandra.cache.StrongMemoryCache;
 import org.normandra.graph.GraphManager;
 import org.normandra.graph.GraphManagerFactory;
 import org.normandra.meta.DatabaseMetaBuilder;
@@ -293,10 +293,10 @@ public class OrientHelper implements TestHelper {
         cleanupDirs();
         Orient.instance().startup();
         if (useLocalServer) {
-            database = OrientDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, separateProcess, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+            database = OrientDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, separateProcess, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
         } else {
             ensurePaths(embeddedDir);
-            database = OrientDatabase.createLocalFile(embeddedDir, databaseName, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+            database = OrientDatabase.createLocalFile(embeddedDir, databaseName, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
         }
         entityManager = new EntityManagerFactory(this.database, this.database.getMeta()).create();
     }
@@ -306,10 +306,10 @@ public class OrientHelper implements TestHelper {
         cleanupDirs();
         Orient.instance().startup();
         if (useLocalServer) {
-            database = OrientGraphDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, separateProcess, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+            database = OrientGraphDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, separateProcess, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
         } else {
             ensurePaths(embeddedDir);
-            database = OrientGraphDatabase.createLocalFile(embeddedDir, databaseName, new MemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+            database = OrientGraphDatabase.createLocalFile(embeddedDir, databaseName, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
         }
         graphManager = new GraphManagerFactory((OrientGraphDatabase) this.database, (GraphMeta) this.database.getMeta()).create();
     }
