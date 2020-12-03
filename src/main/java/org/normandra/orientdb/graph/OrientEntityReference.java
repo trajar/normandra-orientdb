@@ -204,8 +204,8 @@ import org.normandra.meta.EntityMeta;
 import org.normandra.orientdb.data.OrientUtils;
 import org.normandra.util.EntityBuilder;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * an orient entity session backed reference
@@ -217,7 +217,7 @@ public class OrientEntityReference<T> implements EntityReference<T> {
 
     private final EntityMeta meta;
 
-    private OIdentifiable record;
+    private final OIdentifiable record;
 
     private T instance;
 
@@ -254,5 +254,20 @@ public class OrientEntityReference<T> implements EntityReference<T> {
         final EntityBuilder builder = new EntityBuilder(this.graph, this.graph.buildDataFactory());
         this.instance = (T) builder.build(this.meta, data);
         return this.instance;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        OrientEntityReference<?> that = (OrientEntityReference<?>) o;
+        return Objects.equals(graph, that.graph) &&
+                Objects.equals(meta, that.meta) &&
+                Objects.equals(record, that.record);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(graph, meta, record);
     }
 }

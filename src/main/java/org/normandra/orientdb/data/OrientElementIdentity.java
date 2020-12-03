@@ -220,7 +220,7 @@ public class OrientElementIdentity<T> implements ElementIdentity<T> {
     }
 
     @Override
-    public ORID fromKey(final EntitySession session, final Object key) throws NormandraException {
+    public ORID fromKey(final EntitySession session, final Object key) {
         if (null == key) {
             return null;
         }
@@ -230,7 +230,7 @@ public class OrientElementIdentity<T> implements ElementIdentity<T> {
     }
 
     @Override
-    public ORID fromEntity(final EntitySession session, final T value) throws NormandraException {
+    public ORID fromEntity(final EntitySession session, final T value) {
         if (null == value) {
             return null;
         }
@@ -239,7 +239,7 @@ public class OrientElementIdentity<T> implements ElementIdentity<T> {
     }
 
     @Override
-    public List<?> fromEntities(final EntitySession session, final T... values) throws NormandraException {
+    public List<?> fromEntities(final EntitySession session, final T... values) {
         if (null == values || values.length <= 0) {
             return Collections.emptyList();
         }

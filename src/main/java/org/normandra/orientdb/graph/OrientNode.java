@@ -210,10 +210,7 @@ import org.normandra.property.PropertyModel;
 import org.normandra.util.ArraySet;
 import org.normandra.util.EntityPersistence;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -539,19 +536,14 @@ public class OrientNode<T> implements Node<T> {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-
         OrientNode<?> that = (OrientNode<?>) o;
-
-        if (graph != null ? !graph.equals(that.graph) : that.graph != null) return false;
-        if (meta != null ? !meta.equals(that.meta) : that.meta != null) return false;
-        return vertex != null ? vertex.equals(that.vertex) : that.vertex == null;
+        return Objects.equals(graph, that.graph) &&
+                Objects.equals(meta, that.meta) &&
+                Objects.equals(vertex, that.vertex);
     }
 
     @Override
     public int hashCode() {
-        int result = graph != null ? graph.hashCode() : 0;
-        result = 31 * result + (meta != null ? meta.hashCode() : 0);
-        result = 31 * result + (vertex != null ? vertex.hashCode() : 0);
-        return result;
+        return Objects.hash(graph, meta, vertex);
     }
 }

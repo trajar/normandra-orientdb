@@ -198,12 +198,12 @@ import com.orientechnologies.orient.core.db.OPartitionedDatabasePool;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 
 /**
- * fixed size orientdb connection pool
+ * fixed size orientdb connection pool based on orientdb's partitioned pool
  */
-public class FixedOrientPool implements OrientPool {
+public class PartitionedOrientPool implements OrientPool {
     private final OPartitionedDatabasePool pool;
 
-    public FixedOrientPool(final String url, final String database, final String user, final String pwd) {
+    public PartitionedOrientPool(final String url, final String database, final String user, final String pwd) {
         this.pool = new OPartitionedDatabasePool(OrientUtils.url(url, database), user, pwd);
     }
 

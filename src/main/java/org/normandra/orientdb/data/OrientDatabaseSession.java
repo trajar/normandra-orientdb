@@ -350,11 +350,6 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         }
     }
 
-    private DatabaseQuery executeNamedQuery(final EntityMeta meta, final OrientQuery query, final Map<String, Object> params) {
-        final OrientSelfClosingEntityQuery q = new OrientSelfClosingEntityQuery(this.database, query.getQuery(), params);
-        return new OrientDatabaseQuery(this, meta, q);
-    }
-
     private DatabaseQuery executeDynamicQuery(final EntityMeta meta, final String query, final Map<String, Object> params) {
         final OrientSelfClosingEntityQuery q = new OrientSelfClosingEntityQuery(this.database, query, params);
         return new OrientDatabaseQuery(this, meta, q);

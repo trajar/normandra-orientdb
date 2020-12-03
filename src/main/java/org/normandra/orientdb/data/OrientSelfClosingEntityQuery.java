@@ -82,16 +82,12 @@ public class OrientSelfClosingEntityQuery implements Iterable<ODocument>, Closea
         } catch (Exception e) {
             throw new IOException("Unable to close results.");
         }
-        synchronized (this) {
-            this.closed = true;
-        }
+        this.closed = true;
     }
 
     public boolean isClosed() {
-        synchronized (this) {
-            if (this.closed) {
-                return true;
-            }
+        if (this.closed) {
+            return true;
         }
 
         if (database.isClosed()) {
@@ -101,7 +97,7 @@ public class OrientSelfClosingEntityQuery implements Iterable<ODocument>, Closea
         return false;
     }
 
-    synchronized private OResultSet execute() {
+    private OResultSet execute() {
         try {
             this.closeResults();
         } catch (Exception e) {
@@ -126,7 +122,7 @@ public class OrientSelfClosingEntityQuery implements Iterable<ODocument>, Closea
         return this.results;
     }
 
-    synchronized private void closeResults() {
+    private void closeResults() throws Exception {
         if (this.results != null) {
             this.results.close();
             this.results = null;

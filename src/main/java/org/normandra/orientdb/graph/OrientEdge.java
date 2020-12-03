@@ -208,6 +208,8 @@ import org.normandra.orientdb.data.OrientUtils;
 import org.normandra.property.PropertyModel;
 import org.normandra.util.EntityPersistence;
 
+import java.util.Objects;
+
 /**
  * an orient edge api
  * <p>
@@ -319,19 +321,14 @@ public class OrientEdge<T> implements Edge<T> {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-
         OrientEdge<?> that = (OrientEdge<?>) o;
-
-        if (graph != null ? !graph.equals(that.graph) : that.graph != null) return false;
-        if (meta != null ? !meta.equals(that.meta) : that.meta != null) return false;
-        return edge != null ? edge.equals(that.edge) : that.edge == null;
+        return Objects.equals(graph, that.graph) &&
+                Objects.equals(meta, that.meta) &&
+                Objects.equals(edge, that.edge);
     }
 
     @Override
     public int hashCode() {
-        int result = graph != null ? graph.hashCode() : 0;
-        result = 31 * result + (meta != null ? meta.hashCode() : 0);
-        result = 31 * result + (edge != null ? edge.hashCode() : 0);
-        return result;
+        return Objects.hash(graph, meta, edge);
     }
 }

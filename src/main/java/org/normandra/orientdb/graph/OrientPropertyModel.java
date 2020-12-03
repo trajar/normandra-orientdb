@@ -196,7 +196,6 @@ package org.normandra.orientdb.graph;
 
 import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import org.apache.commons.lang.NullArgumentException;
-import org.normandra.NormandraException;
 import org.normandra.meta.ColumnMeta;
 import org.normandra.meta.EntityMeta;
 import org.normandra.orientdb.data.OrientUtils;
@@ -204,7 +203,6 @@ import org.normandra.property.EmptyPropertyFilter;
 import org.normandra.property.PropertyFilter;
 import org.normandra.property.PropertyModel;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -236,7 +234,7 @@ public class OrientPropertyModel implements PropertyModel {
     }
 
     @Override
-    public Map<ColumnMeta, Object> get() throws NormandraException {
+    public Map<ColumnMeta, Object> get() {
         return OrientUtils.unpackValues(this.meta, this.document.getRecord());
     }
 
@@ -261,7 +259,7 @@ public class OrientPropertyModel implements PropertyModel {
     }
 
     @Override
-    public void put(final Map<ColumnMeta, Object> data) throws NormandraException {
+    public void put(final Map<ColumnMeta, Object> data) {
         if (null == data || data.isEmpty()) {
             return;
         }
@@ -276,7 +274,7 @@ public class OrientPropertyModel implements PropertyModel {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
 
     }
 }
