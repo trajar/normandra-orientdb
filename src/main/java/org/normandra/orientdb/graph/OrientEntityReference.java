@@ -257,6 +257,19 @@ public class OrientEntityReference<T> implements EntityReference<T> {
     }
 
     @Override
+    public void reload() throws NormandraException {
+        this.instance = null;
+        if (this.record instanceof ODocument) {
+            try {
+                final ODocument doc = (ODocument) this.record;
+                doc.reload();
+            } catch (final Exception e) {
+                throw new NormandraException("Unable to load entity reference.", e);
+            }
+        }
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;

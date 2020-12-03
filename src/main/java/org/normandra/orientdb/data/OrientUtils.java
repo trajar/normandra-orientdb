@@ -194,11 +194,14 @@
 
 package org.normandra.orientdb.data;
 
+import com.orientechnologies.common.concur.ONeedRetryException;
+import com.orientechnologies.common.concur.lock.OModificationOperationProhibitedException;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.db.record.ORecordLazyList;
 import com.orientechnologies.orient.core.db.record.ORecordLazySet;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.storage.ORecordDuplicatedException;
 import org.normandra.meta.*;
 import org.normandra.property.EmptyPropertyFilter;
 import org.normandra.property.PropertyFilter;
@@ -226,6 +229,20 @@ public class OrientUtils {
         } else {
             return url + "/" + database;
         }
+    }
+
+    public static boolean isRetryException(final Exception error) {
+        if (null == error) {
+            return false;
+        }
+        if (error instanceof ONeedRetryException) {
+            return true;
+        } else if (error instanceof ORecordDuplicatedException) {
+            return true;
+        } else if (error instanceof OModificationOperationProhibitedException) {
+            return true;
+        }
+        return false;
     }
 
     public static Object unpackValue(final ODocument document, final ColumnMeta column) {

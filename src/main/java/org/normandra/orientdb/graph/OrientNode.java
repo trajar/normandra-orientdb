@@ -251,6 +251,11 @@ public class OrientNode<T> implements Node<T> {
         return this.vertex;
     }
 
+    public void reload() throws NormandraException {
+        this.vertex.reload();
+        this.data = new OrientEntityReference<>(this.graph, this.meta, this.vertex.getIdentity());
+    }
+
     @Override
     public void delete() throws NormandraException {
         this.graph.withTransaction(tx -> {

@@ -244,6 +244,11 @@ public class OrientEdge<T> implements Edge<T> {
         return this.edge;
     }
 
+    public void reload() throws NormandraException {
+        this.edge.reload();
+        this.data = new OrientEntityReference<>(this.graph, this.meta, this.edge.getIdentity());
+    }
+
     @Override
     public void delete() throws NormandraException {
         this.graph.withTransaction(tx -> {
