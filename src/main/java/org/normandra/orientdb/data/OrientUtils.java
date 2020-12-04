@@ -231,7 +231,7 @@ public class OrientUtils {
         }
     }
 
-    public static boolean isRetryException(final Exception error) {
+    public static boolean isRetryException(final Throwable error) {
         if (null == error) {
             return false;
         }
@@ -239,10 +239,9 @@ public class OrientUtils {
             return true;
         } else if (error instanceof ORecordDuplicatedException) {
             return true;
-        } else if (error instanceof OModificationOperationProhibitedException) {
-            return true;
+        } else {
+            return isRetryException(error.getCause());
         }
-        return false;
     }
 
     public static Object unpackValue(final ODocument document, final ColumnMeta column) {
