@@ -199,6 +199,7 @@ import org.apache.commons.io.FileUtils;
 import org.normandra.*;
 import org.normandra.cache.MapFactory;
 import org.normandra.cache.StrongMemoryCache;
+import org.normandra.graph.GraphDatabase;
 import org.normandra.graph.GraphManager;
 import org.normandra.graph.GraphManagerFactory;
 import org.normandra.meta.DatabaseMetaBuilder;
@@ -253,22 +254,23 @@ public class OrientHelper implements TestHelper {
     }
 
     @Override
-    public EntityManager getManager() {
-        if (graphManager != null) {
-            return graphManager;
-        }
-        if (entityManager != null) {
+    public EntityManager getManager() throws Exception {
+        if (database instanceof GraphDatabase) {
+            return getGraph();
+        } else {
+            if (null == entityManager) {
+                entityManager = new EntityManagerFactory(this.database, this.database.getMeta()).create();
+            }
             return entityManager;
         }
-        throw new IllegalStateException();
     }
 
     @Override
-    public GraphManager getGraph() {
-        if (graphManager != null) {
-            return graphManager;
+    public GraphManager getGraph() throws Exception {
+        if (null == graphManager) {
+            graphManager = new GraphManagerFactory((OrientGraphDatabase) this.database, (GraphMeta) this.database.getMeta()).create();
         }
-        throw new IllegalStateException();
+        return graphManager;
     }
 
     public File extractDistro() throws IOException {
@@ -298,7 +300,6 @@ public class OrientHelper implements TestHelper {
             ensurePaths(embeddedDir);
             database = OrientDatabase.createLocalFile(embeddedDir, databaseName, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
         }
-        entityManager = new EntityManagerFactory(this.database, this.database.getMeta()).create();
     }
 
     @Override
@@ -311,7 +312,6 @@ public class OrientHelper implements TestHelper {
             ensurePaths(embeddedDir);
             database = OrientGraphDatabase.createLocalFile(embeddedDir, databaseName, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
         }
-        graphManager = new GraphManagerFactory((OrientGraphDatabase) this.database, (GraphMeta) this.database.getMeta()).create();
     }
 
     private void ensurePaths(final File dir) throws Exception {

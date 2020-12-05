@@ -340,6 +340,150 @@ public class OrientDatabase implements Database {
         return new OrientDatabaseSession(this.createDatabase(), this.cache.create());
     }
 
+    public boolean hasEntity(final String entityName) {
+        if (null == entityName || entityName.isEmpty()) {
+            return false;
+        }
+        try (final ODatabaseDocument database = this.createDatabase()) {
+            return hasCluster(database, entityName) || hasClass(database, entityName);
+        }
+    }
+
+    public boolean hasProperty(final EntityMeta entity, final String indexName) {
+        if (null == entity) {
+            return false;
+        }
+        return this.hasProperty(entity.getTable(), indexName);
+    }
+
+    public boolean hasProperty(final String entityName, final String propertyName) {
+        if (null == entityName || propertyName.isEmpty()) {
+            return false;
+        }
+        try (final ODatabaseDocument database = this.createDatabase()) {
+            return hasProperty(database, entityName, propertyName);
+        }
+    }
+
+    public boolean hasIndex(final EntityMeta entity, final String indexName) {
+        if (null == entity) {
+            return false;
+        }
+        return this.hasIndex(entity.getTable(), indexName);
+    }
+
+    public boolean hasIndex(final String entityName, final String indexName) {
+        if (null == entityName || indexName.isEmpty()) {
+            return false;
+        }
+        try (final ODatabaseDocument database = this.createDatabase()) {
+            final OClass schemaClass = database.getMetadata().getSchema().getClass(entityName);
+            if (null == schemaClass) {
+                return false;
+            } else {
+                return hasIndex(database, indexName);
+            }
+        }
+    }
+
+    public boolean removeEntity(final String entityName) {
+        if (null == entityName || entityName.isEmpty()) {
+            return false;
+        }
+        try (final ODatabaseDocument database = this.createDatabase()) {
+            if (hasCluster(database, entityName) || hasClass(database, entityName)) {
+                database.command(new OCommandSQL("DELETE FROM " + entityName)).execute();
+                database.getMetadata().getSchema().dropClass(entityName);
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    public boolean removeIndex(final EntityMeta entity, final String indexName) {
+        if (null == entity || null == indexName) {
+            return false;
+        }
+        return this.removeIndices(entity, Collections.singleton(indexName));
+    }
+
+    public boolean removeIndices(final EntityMeta entity, final Iterable<String> indices) {
+        if (null == entity) {
+            return false;
+        }
+        return this.removeIndices(entity.getTable(), indices);
+    }
+
+    public boolean removeIndex(final String entityName, final String indexName) {
+        if (null == entityName || null == indexName) {
+            return false;
+        }
+        return this.removeIndices(entityName, Collections.singleton(indexName));
+    }
+
+    public boolean removeIndices(final String entityName, final Iterable<String> indices) {
+        if (null == entityName || null == indices) {
+            return false;
+        }
+        try (final ODatabaseDocument database = this.createDatabase()) {
+            final OClass schemaClass = database.getMetadata().getSchema().getClass(entityName);
+            if (null == schemaClass) {
+                return false;
+            }
+            int numDropped = 0;
+            for (final String indexName : indices) {
+                if (hasIndex(database, indexName)) {
+                    database.getMetadata().getIndexManager().dropIndex(indexName);
+                    numDropped++;
+                }
+            }
+            return numDropped > 0;
+        }
+    }
+
+
+    public boolean removeProperty(final EntityMeta entity, final String property) {
+        if (null == entity || null == property) {
+            return false;
+        }
+        return this.removeProperties(entity, Collections.singleton(property));
+    }
+
+    public boolean removeProperties(final EntityMeta entity, final Iterable<String> properties) {
+        if (null == entity) {
+            return false;
+        }
+        return this.removeProperties(entity.getTable(), properties);
+    }
+
+    public boolean removeProperty(final String entityName, final String property) {
+        if (null == entityName || null == property) {
+            return false;
+        }
+        return this.removeProperties(entityName, Collections.singleton(property));
+    }
+
+    public boolean removeProperties(final String entityName, final Iterable<String> properties) {
+        if (null == entityName || null == properties) {
+            return false;
+        }
+        try (final ODatabaseDocument database = this.createDatabase()) {
+            final OClass schemaClass = database.getMetadata().getSchema().getClass(entityName);
+            if (null == schemaClass) {
+                return false;
+            }
+            int numDropped = 0;
+            for (final String property : properties) {
+                if (schemaClass.existsProperty(property)) {
+                    schemaClass.dropProperty(property);
+                    numDropped++;
+                }
+            }
+            return numDropped > 0;
+        }
+    }
+
     @Override
     public void refresh() throws NormandraException {
         if (DatabaseConstruction.NONE.equals(this.constructionMode)) {
@@ -409,7 +553,7 @@ public class OrientDatabase implements Database {
 
                 // drop table as required
                 if (DatabaseConstruction.RECREATE.equals(this.constructionMode)) {
-                    if (hasCluster(database, tableName)) {
+                    if (hasClass(database, tableName) || hasCluster(database, tableName)) {
                         database.command(new OCommandSQL("DELETE FROM " + tableName)).execute();
                         database.getMetadata().getSchema().dropClass(tableName);
                     }
@@ -434,7 +578,7 @@ public class OrientDatabase implements Database {
                 // assign generator
                 final IdGenerator counter = new OrientIdGenerator(tableName, indexName, keyColumn, valueColumn, keyValue, this);
                 entity.setGenerator(column, counter);
-                logger.info("Set counter id generator for [" + column + "] on entity [" + entity + "].");
+                logger.debug("Set counter id generator for [" + column + "] on entity [" + entity + "].");
             }
         }
     }
@@ -445,9 +589,6 @@ public class OrientDatabase implements Database {
 
         if (DatabaseConstruction.RECREATE.equals(this.constructionMode)) {
             // drop schema
-            if (hasClass(database, schemaName)) {
-                database.command(new OCommandSQL("DELETE FROM " + schemaName + " UNSAFE")).execute();
-            }
             if (hasIndex(database, keyIndex)) {
                 database.command(new OCommandSQL("DROP INDEX " + keyIndex)).execute();
             }
@@ -462,6 +603,9 @@ public class OrientDatabase implements Database {
                 if (hasIndex(database, indexName)) {
                     database.command(new OCommandSQL("DROP INDEX " + indexName)).execute();
                 }
+            }
+            if (hasClass(database, schemaName)) {
+                database.command(new OCommandSQL("DELETE FROM " + schemaName + " UNSAFE")).execute();
             }
         }
 
@@ -529,12 +673,12 @@ public class OrientDatabase implements Database {
         return Collections.unmodifiableCollection(names);
     }
 
-    private static boolean hasIndex(final ODatabaseDocument database, final String clusterName) {
-        if (null == clusterName || clusterName.isEmpty()) {
+    private static boolean hasIndex(final ODatabaseDocument database, final String indexName) {
+        if (null == indexName || indexName.isEmpty()) {
             return false;
         }
         for (final String existing : getIndices(database)) {
-            if (clusterName.equalsIgnoreCase(existing)) {
+            if (indexName.equalsIgnoreCase(existing)) {
                 return true;
             }
         }

@@ -247,6 +247,10 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
 
     @Override
     public void close() {
+        if (!this.database.isActiveOnCurrentThread()) {
+            logger.warn("Database session is not on current thread prior to closing, check thread usage.");
+            this.database.activateOnCurrentThread();
+        }
         this.database.close();
     }
 
@@ -254,6 +258,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
     public void clear() {
         this.cache.clear();
         this.database.getLocalCache().invalidate();
+        this.database.getLocalCache().clear();
     }
 
     public boolean isTransactionActive() {

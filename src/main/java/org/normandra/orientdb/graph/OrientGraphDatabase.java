@@ -199,6 +199,7 @@ import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.exception.OSecurityAccessException;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
+import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.enterprise.channel.binary.OTokenSecurityException;
 import com.tinkerpop.blueprints.impls.orient.OrientEdgeType;
 import com.tinkerpop.blueprints.impls.orient.OrientVertexType;
@@ -287,6 +288,44 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
             }
         }
         throw new IllegalStateException("Unable to create orient graph from database session.");
+    }
+
+    public boolean removeNode(final String entityName) {
+        if (null == entityName || entityName.isEmpty()) {
+            return false;
+        }
+        try (final ODatabase database = this.pool.acquire()) {
+            final OClass vertexClass = database.getMetadata().getSchema().getClass(OrientVertexType.CLASS_NAME);
+            final OClass schemaClass = database.getMetadata().getSchema().getClass(entityName);
+            if (null == schemaClass || null == vertexClass) {
+                return false;
+            }
+            if (!schemaClass.getSuperClassesNames().contains(vertexClass.getName())) {
+                throw new IllegalStateException("Unable to remove entity [" + schemaClass + "] - not vertex type.");
+            }
+            database.command(new OCommandSQL("DELETE VERTEX " + entityName)).execute();
+            database.getMetadata().getSchema().dropClass(entityName);
+            return true;
+        }
+    }
+
+    public boolean removeEdge(final String entityName) {
+        if (null == entityName || entityName.isEmpty()) {
+            return false;
+        }
+        try (final ODatabase database = this.pool.acquire()) {
+            final OClass edgeClass = database.getMetadata().getSchema().getClass(OrientEdgeType.CLASS_NAME);
+            final OClass schemaClass = database.getMetadata().getSchema().getClass(entityName);
+            if (null == schemaClass || null == edgeClass) {
+                return false;
+            }
+            if (!schemaClass.getSuperClassesNames().contains(edgeClass.getName())) {
+                throw new IllegalStateException("Unable to remove entity [" + schemaClass + "] - not edge type.");
+            }
+            database.command(new OCommandSQL("DELETE EDGE " + entityName)).execute();
+            database.getMetadata().getSchema().dropClass(entityName);
+            return true;
+        }
     }
 
     @Override

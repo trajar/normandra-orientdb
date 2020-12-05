@@ -255,6 +255,7 @@ public class LocalFileOrientPool implements OrientPool {
             final File path = new File(this.url.substring(index + 1));
             try {
                 if (!path.exists() || !path.isDirectory() || path.list().length <= 0) {
+                    logger.debug("Creating local database at [" + this.database + "] ...");
                     FileUtils.forceMkdir(path);
                     this.orientdb.create(this.database, ODatabaseType.PLOCAL);
                 }
