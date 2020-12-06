@@ -231,6 +231,8 @@ public class OrientHelper implements TestHelper {
 
     private String serverPwd = "admin";
 
+    private DatabaseConstruction constructionMode = DatabaseConstruction.CREATE_SCHEMA;
+
     private final boolean useLocalServer;
 
     private final boolean separateProcess;
@@ -259,7 +261,7 @@ public class OrientHelper implements TestHelper {
             return getGraph();
         } else {
             if (null == entityManager) {
-                entityManager = new EntityManagerFactory(this.database, this.database.getMeta()).create();
+                entityManager = new EntityManagerFactory(this.database, this.database.getMeta(), this.constructionMode).create();
             }
             return entityManager;
         }
@@ -268,7 +270,7 @@ public class OrientHelper implements TestHelper {
     @Override
     public GraphManager getGraph() throws Exception {
         if (null == graphManager) {
-            graphManager = new GraphManagerFactory((OrientGraphDatabase) this.database, (GraphMeta) this.database.getMeta()).create();
+            graphManager = new GraphManagerFactory((OrientGraphDatabase) this.database, (GraphMeta) this.database.getMeta(), this.constructionMode).create();
         }
         return graphManager;
     }
@@ -295,10 +297,10 @@ public class OrientHelper implements TestHelper {
         cleanupDirs();
         Orient.instance().startup();
         if (useLocalServer) {
-            database = OrientDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, separateProcess, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+            database = OrientDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, separateProcess, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), builder);
         } else {
             ensurePaths(embeddedDir);
-            database = OrientDatabase.createLocalFile(embeddedDir, databaseName, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+            database = OrientDatabase.createLocalFile(embeddedDir, databaseName, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), builder);
         }
     }
 
@@ -307,10 +309,10 @@ public class OrientHelper implements TestHelper {
         cleanupDirs();
         Orient.instance().startup();
         if (useLocalServer) {
-            database = OrientGraphDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, separateProcess, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+            database = OrientGraphDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, separateProcess, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), builder);
         } else {
             ensurePaths(embeddedDir);
-            database = OrientGraphDatabase.createLocalFile(embeddedDir, databaseName, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), DatabaseConstruction.CREATE, builder);
+            database = OrientGraphDatabase.createLocalFile(embeddedDir, databaseName, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), builder);
         }
     }
 

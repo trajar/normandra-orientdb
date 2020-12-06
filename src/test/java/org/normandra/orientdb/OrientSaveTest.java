@@ -2,9 +2,16 @@ package org.normandra.orientdb;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.normandra.Database;
+import org.normandra.DatabaseConstruction;
 import org.normandra.EntityManager;
 import org.normandra.SaveTest;
+import org.normandra.entities.Address;
+import org.normandra.entities.CatEntity;
 import org.normandra.entities.DogEntity;
+import org.normandra.entities.StoreEntity;
+import org.normandra.meta.DatabaseMeta;
+import org.normandra.meta.DatabaseMetaBuilder;
 import org.normandra.meta.EntityMeta;
 import org.normandra.orientdb.data.OrientDatabase;
 import org.normandra.orientdb.data.OrientDatabaseSession;
@@ -12,6 +19,34 @@ import org.normandra.orientdb.data.OrientDatabaseSession;
 public class OrientSaveTest extends SaveTest {
     public OrientSaveTest() {
         super(new OrientHelper());
+    }
+
+    @Test
+    public void testRefreshWithNewSchema() throws Exception {
+        OrientDatabase database = (OrientDatabase) this.helper.getDatabase();
+        EntityManager manager = this.helper.getManager();
+        OrientDatabaseSession session = (OrientDatabaseSession) manager.getSession();
+
+        session.database().activateOnCurrentThread();
+        StoreEntity store = new StoreEntity("big bobs", new Address("bob street", "centervelle", 123));
+        DogEntity fluffy = new DogEntity("fluffy", 4);
+        manager.save(fluffy);
+        manager.save(store);
+        manager.clear();
+
+        DatabaseMeta updatedMeta = new DatabaseMetaBuilder().withClasses(CatEntity.class, DogEntity.class).create();
+        database.refreshWith(updatedMeta, DatabaseConstruction.FORCE_SCHEMA);
+
+        session.database().activateOnCurrentThread();
+        Assert.assertEquals(fluffy, manager.get(DogEntity.class, fluffy.getId()));
+        Exception error = null;
+        try {
+            manager.get(StoreEntity.class, store.getId());
+        } catch (final Exception e) {
+            e.printStackTrace();
+            error = e;
+        }
+        Assert.assertNotNull(error);
     }
 
     @Test

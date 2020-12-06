@@ -562,17 +562,23 @@ public class OrientUtils {
         return OType.BINARY;
     }
 
-    static String keyIndex(final EntityMeta table) {
-        if (null == table) {
-            return null;
+    static String propertyIndex(final EntityMeta entity, final IndexMeta index) {
+        final String schemaName = entity.getTable();
+        if (index.getColumns().size() == 1) {
+            final ColumnMeta column = index.getColumns().iterator().next();
+            return schemaName + "." + column.getName();
+        } else {
+            return schemaName + "." + index.getName();
         }
+    }
 
-        final Collection<ColumnMeta> keys = table.getPrimaryKeys();
+    static String keyIndex(final EntityMeta entity) {
+        final Collection<ColumnMeta> keys = entity.getPrimaryKeys();
         if (keys.size() == 1) {
             final ColumnMeta key = keys.iterator().next();
-            return table.getTable() + "." + key.getName();
+            return entity.getTable() + "." + key.getName();
         } else {
-            return table.getTable() + ".key";
+            return entity.getTable() + ".key";
         }
     }
 

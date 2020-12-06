@@ -222,38 +222,35 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
 
     public static OrientGraphDatabase createRemote(
             final String url, final String database, final String userid, final String password,
-            final EntityCacheFactory factory, final DatabaseConstruction mode,
-            final GraphMetaBuilder metaBuilder) {
+            final EntityCacheFactory factory, final GraphMetaBuilder metaBuilder) {
         final OrientPool pool = new DynamicOrientPool(url, database, userid, password);
         final GraphMeta meta = metaBuilder.withColumnFactory(columnFactory).create();
-        return new OrientGraphDatabase(url, pool, factory, mode, meta);
+        return new OrientGraphDatabase(url, pool, factory, meta);
     }
 
     public static OrientGraphDatabase createLocalFile(
             final File path, final String database,
-            final EntityCacheFactory factory, final DatabaseConstruction mode,
-            final GraphMetaBuilder metaBuilder) {
+            final EntityCacheFactory factory, final GraphMetaBuilder metaBuilder) {
         final String url = "plocal:" + FilenameUtils.normalize(path.getAbsolutePath());
         final OrientPool pool = new LocalFileOrientPool(url, database, "admin", "admin");
         final GraphMeta meta = metaBuilder.withColumnFactory(columnFactory).create();
-        return new OrientGraphDatabase(url, pool, factory, mode, meta);
+        return new OrientGraphDatabase(url, pool, factory, meta);
     }
 
     public static OrientGraphDatabase createLocalServer(
             final File path, final String database, final String userid, final String password, final boolean separateProcess,
-            final EntityCacheFactory factory, final DatabaseConstruction mode,
-            final GraphMetaBuilder metaBuilder) {
+            final EntityCacheFactory factory, final GraphMetaBuilder metaBuilder) {
         final OrientPool pool = new LocalServerOrientPool(path, database, userid, password, separateProcess);
         final GraphMeta meta = metaBuilder.withColumnFactory(columnFactory).create();
-        return new OrientGraphDatabase("remote:localhost", pool, factory, mode, meta);
+        return new OrientGraphDatabase("remote:localhost", pool, factory, meta);
     }
 
     private static final Logger logger = LoggerFactory.getLogger(OrientGraphDatabase.class);
 
     private final GraphMeta meta;
 
-    public OrientGraphDatabase(final String url, final OrientPool pool, final EntityCacheFactory cache, final DatabaseConstruction mode, final GraphMeta meta) {
-        super(url, pool, cache, mode, meta);
+    public OrientGraphDatabase(final String url, final OrientPool pool, final EntityCacheFactory cache, final GraphMeta meta) {
+        super(url, pool, cache, meta);
         this.meta = meta;
     }
 
@@ -290,55 +287,17 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
         throw new IllegalStateException("Unable to create orient graph from database session.");
     }
 
-    public boolean removeNode(final String entityName) {
-        if (null == entityName || entityName.isEmpty()) {
-            return false;
-        }
-        try (final ODatabase database = this.pool.acquire()) {
-            final OClass vertexClass = database.getMetadata().getSchema().getClass(OrientVertexType.CLASS_NAME);
-            final OClass schemaClass = database.getMetadata().getSchema().getClass(entityName);
-            if (null == schemaClass || null == vertexClass) {
-                return false;
-            }
-            if (!schemaClass.getSuperClassesNames().contains(vertexClass.getName())) {
-                throw new IllegalStateException("Unable to remove entity [" + schemaClass + "] - not vertex type.");
-            }
-            database.command(new OCommandSQL("DELETE VERTEX " + entityName)).execute();
-            database.getMetadata().getSchema().dropClass(entityName);
-            return true;
-        }
-    }
-
-    public boolean removeEdge(final String entityName) {
-        if (null == entityName || entityName.isEmpty()) {
-            return false;
-        }
-        try (final ODatabase database = this.pool.acquire()) {
-            final OClass edgeClass = database.getMetadata().getSchema().getClass(OrientEdgeType.CLASS_NAME);
-            final OClass schemaClass = database.getMetadata().getSchema().getClass(entityName);
-            if (null == schemaClass || null == edgeClass) {
-                return false;
-            }
-            if (!schemaClass.getSuperClassesNames().contains(edgeClass.getName())) {
-                throw new IllegalStateException("Unable to remove entity [" + schemaClass + "] - not edge type.");
-            }
-            database.command(new OCommandSQL("DELETE EDGE " + entityName)).execute();
-            database.getMetadata().getSchema().dropClass(entityName);
-            return true;
-        }
-    }
-
     @Override
-    public void refresh() throws NormandraException {
-        if (DatabaseConstruction.NONE.equals(this.constructionMode)) {
+    public void refreshWith(final GraphMeta graphMeta, final DatabaseConstruction constructionMode) throws NormandraException {
+        if (DatabaseConstruction.NONE.equals(constructionMode)) {
             return;
         }
 
-        super.refresh();
+        super.refreshWith(graphMeta, constructionMode);
 
         try (final ODatabase database = this.pool.acquire()) {
             final OClass vertexClass = database.getMetadata().getSchema().getOrCreateClass(OrientVertexType.CLASS_NAME);
-            for (final EntityMeta entityMeta : this.meta.getNodeEntities()) {
+            for (final EntityMeta entityMeta : graphMeta.getNodeEntities()) {
                 final String schemaName = entityMeta.getTable();
                 final OClass schemaClass = database.getMetadata().getSchema().getClass(schemaName);
                 if (schemaClass != null && !schemaClass.getSuperClassesNames().contains(vertexClass.getName())) {
@@ -347,7 +306,7 @@ public class OrientGraphDatabase extends OrientDatabase implements GraphDatabase
                 }
             }
             final OClass edgeClass = database.getMetadata().getSchema().getOrCreateClass(OrientEdgeType.CLASS_NAME);
-            for (final EntityMeta entityMeta : this.meta.getEdgeEntities()) {
+            for (final EntityMeta entityMeta : graphMeta.getEdgeEntities()) {
                 final String schemaName = entityMeta.getTable();
                 final OClass schemaClass = database.getMetadata().getSchema().getClass(schemaName);
                 if (schemaClass != null && !schemaClass.getSuperClassesNames().contains(edgeClass.getName())) {
