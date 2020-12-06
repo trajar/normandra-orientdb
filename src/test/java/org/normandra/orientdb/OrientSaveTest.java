@@ -2,7 +2,6 @@ package org.normandra.orientdb;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.normandra.Database;
 import org.normandra.DatabaseConstruction;
 import org.normandra.EntityManager;
 import org.normandra.SaveTest;

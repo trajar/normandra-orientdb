@@ -332,6 +332,13 @@ public class OrientDatabase implements Database {
         return new OrientDatabaseSession(this.createDatabase(), this.cache.create());
     }
 
+    public boolean hasEntity(final EntityMeta entity) {
+        if (null == entity) {
+            return false;
+        }
+        return this.hasEntity(entity.getTable());
+    }
+
     public boolean hasEntity(final String entityName) {
         if (null == entityName || entityName.isEmpty()) {
             return false;
@@ -375,6 +382,15 @@ public class OrientDatabase implements Database {
             } else {
                 return hasIndex(database, indexName);
             }
+        }
+    }
+
+    public boolean hasIndex(final String indexName) {
+        if (null == indexName || indexName.isEmpty()) {
+            return false;
+        }
+        try (final ODatabaseDocument database = this.createDatabase()) {
+            return hasIndex(database, indexName);
         }
     }
 
@@ -522,7 +538,7 @@ public class OrientDatabase implements Database {
 
         try (final ODatabaseDocument database = this.createDatabase()) {
             if (DatabaseConstruction.FORCE_SCHEMA.equals(constructionMode) ||
-                DatabaseConstruction.DROP_DATA_AND_RECREATE_SCHEMA.equals(constructionMode)) {
+                    DatabaseConstruction.DROP_DATA_AND_RECREATE_SCHEMA.equals(constructionMode)) {
                 // remove any classes no longer used
                 final Set<String> entityNames = databaseMeta.getEntities().stream()
                         .map(EntityMeta::getTable)
@@ -659,7 +675,7 @@ public class OrientDatabase implements Database {
         }
 
         if (DatabaseConstruction.FORCE_SCHEMA.equals(constructionMode) ||
-            DatabaseConstruction.MIGRATE_SCHEMA.equals(constructionMode)) {
+                DatabaseConstruction.MIGRATE_SCHEMA.equals(constructionMode)) {
             // remove any unused indices
             final Set<String> indexNames = entity.getIndexed().stream()
                     .map(x -> OrientUtils.propertyIndex(entity, x))
@@ -719,7 +735,7 @@ public class OrientDatabase implements Database {
                 OrientEdgeType.CLASS_NAME,
                 "OUser", "ORole", "OSequence", "OIdentity", "OFunction",
                 "OTriggered", "OSchedule", "ORestricted");
-        final List<String> list = new ArrayList<>(types.size());
+        final Set<String> list = new HashSet<>(types.size());
         for (final OClass type : types) {
             final String entityClassName = type.getName();
             if (!systemTypes.contains(entityClassName)) {
@@ -734,7 +750,8 @@ public class OrientDatabase implements Database {
         if (null == names || names.isEmpty()) {
             return Collections.emptyList();
         }
-        return Collections.unmodifiableCollection(new TreeSet<>(names));
+        final Set<String> list = new HashSet<>(names);
+        return Collections.unmodifiableCollection(list);
     }
 
     private static Collection<String> getIndices(final ODatabaseDocument database) {
