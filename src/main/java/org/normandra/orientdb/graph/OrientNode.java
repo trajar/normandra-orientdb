@@ -194,6 +194,7 @@
 
 package org.normandra.orientdb.graph;
 
+import com.orientechnologies.common.exception.OException;
 import com.tinkerpop.blueprints.Direction;
 import org.apache.commons.lang.NullArgumentException;
 import org.apache.commons.lang.StringUtils;
@@ -252,8 +253,12 @@ public class OrientNode<T> implements Node<T> {
     }
 
     public void reload() throws NormandraException {
-        this.vertex.reload();
-        this.data = new OrientEntityReference<>(this.graph, this.meta, this.vertex.getIdentity());
+        try {
+            this.vertex.reload();
+            this.data = new OrientEntityReference<>(this.graph, this.meta, this.vertex.getIdentity());
+        } catch (final OException e) {
+            throw new NormandraException("Unable to reload node.", e);
+        }
     }
 
     @Override

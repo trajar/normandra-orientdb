@@ -199,6 +199,7 @@ import com.orientechnologies.common.concur.lock.OModificationOperationProhibited
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.db.record.ORecordLazyList;
 import com.orientechnologies.orient.core.db.record.ORecordLazySet;
+import com.orientechnologies.orient.core.exception.ORetryQueryException;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.storage.ORecordDuplicatedException;
@@ -236,8 +237,13 @@ public class OrientUtils {
             return false;
         }
         if (error instanceof ONeedRetryException) {
+            // clear cache and retry transaction
+            return true;
+        } else if (error instanceof ORetryQueryException) {
+            // (re)execute query
             return true;
         } else if (error instanceof ORecordDuplicatedException) {
+            // possible issue with inserting same element in multiple threads - clear cache and retry
             return true;
         } else {
             return isRetryException(error.getCause());

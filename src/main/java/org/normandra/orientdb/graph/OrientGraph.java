@@ -473,6 +473,38 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         return new OrientEdgeQuery(this, new OrientSelfClosingEntityQuery(this.database, sql, params));
     }
 
+    public int reloadCachedElements() throws NormandraException {
+        if (null == meta) {
+            return 0;
+        }
+
+        int numReloaded = 0;
+        for (final EntityMeta meta : this.meta.list()) {
+            numReloaded += this.reloadCachedElementsByType(meta);
+        }
+        return numReloaded;
+    }
+
+    public int reloadCachedElementsByType(final EntityMeta meta) throws NormandraException {
+        if (null == meta) {
+            return 0;
+        }
+
+        int numReloaded = 0;
+        for (final Object obj : this.cache.listByType(meta, Object.class)) {
+            if (obj instanceof OrientEdge) {
+                final OrientEdge edge = (OrientEdge) obj;
+                edge.reload();
+                numReloaded++;
+            } else if (obj instanceof OrientNode) {
+                final OrientNode node = (OrientNode) obj;
+                node.reload();
+                numReloaded++;
+            }
+        }
+        return numReloaded;
+    }
+
     @Override
     public void close() {
         this.graph.shutdown(false, false);

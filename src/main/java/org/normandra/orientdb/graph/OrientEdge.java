@@ -194,6 +194,7 @@
 
 package org.normandra.orientdb.graph;
 
+import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import org.apache.commons.lang.NullArgumentException;
@@ -245,8 +246,12 @@ public class OrientEdge<T> implements Edge<T> {
     }
 
     public void reload() throws NormandraException {
-        this.edge.reload();
-        this.data = new OrientEntityReference<>(this.graph, this.meta, this.edge.getIdentity());
+        try {
+            this.edge.reload();
+            this.data = new OrientEntityReference<>(this.graph, this.meta, this.edge.getIdentity());
+        } catch (final OException e) {
+            throw new NormandraException("Unable to reload edge.");
+        }
     }
 
     @Override
