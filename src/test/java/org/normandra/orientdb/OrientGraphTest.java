@@ -6,6 +6,8 @@ import org.normandra.GraphTest;
 import org.normandra.NormandraException;
 import org.normandra.Transaction;
 import org.normandra.graph.*;
+import org.normandra.meta.EntityMeta;
+import org.normandra.orientdb.graph.OrientGraph;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -92,5 +94,37 @@ public class OrientGraphTest extends GraphTest {
             }
         }
         Assert.assertEquals(2, numSaved);
+    }
+
+    @Test
+    public void testReloadCached() throws Exception {
+        final GraphManager manager = helper.getGraph();
+        final OrientGraph graph = (OrientGraph) manager.getSession();
+
+        final List<Node> nodes = new ArrayList<>();
+        int numExpectedNodes = 12;
+        manager.withTransaction(tx -> {
+            for (int i = 0; i < numExpectedNodes; i++) {
+                SimpleNode n = new SimpleNode(UUID.randomUUID().toString());
+                Node node = manager.addNode(n);
+                if (node != null) {
+                    nodes.add(node);
+                }
+            }
+            tx.success();
+        });
+        Assert.assertEquals(numExpectedNodes, nodes.size());
+
+        Exception unexpectedError = null;
+        try {
+            EntityMeta meta = manager.getMeta().getNodeMeta(SimpleNode.class);
+            int numReloaded = graph.reloadCachedElementsByType(meta);
+            Assert.assertEquals(numExpectedNodes, numReloaded);
+            manager.clear();
+            Assert.assertEquals(0, graph.reloadCachedElementsByType(meta));
+        } catch (final Exception e) {
+            unexpectedError = e;
+        }
+        Assert.assertNull(unexpectedError);
     }
 }
