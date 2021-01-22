@@ -538,7 +538,7 @@ public class OrientDatabase implements Database {
 
         try (final ODatabaseDocument database = this.createDatabase()) {
             if (DatabaseConstruction.FORCE_SCHEMA.equals(constructionMode) ||
-                    DatabaseConstruction.DROP_DATA_AND_RECREATE_SCHEMA.equals(constructionMode)) {
+                DatabaseConstruction.DROP_DATA_AND_RECREATE_SCHEMA.equals(constructionMode)) {
                 // remove any classes no longer used
                 final Set<String> entityNames = databaseMeta.getEntities().stream()
                         .map(EntityMeta::getTable)
@@ -675,7 +675,7 @@ public class OrientDatabase implements Database {
         }
 
         if (DatabaseConstruction.FORCE_SCHEMA.equals(constructionMode) ||
-                DatabaseConstruction.MIGRATE_SCHEMA.equals(constructionMode)) {
+            DatabaseConstruction.MIGRATE_SCHEMA.equals(constructionMode)) {
             // remove any unused indices
             final Set<String> indexNames = entity.getIndexed().stream()
                     .map(x -> OrientUtils.propertyIndex(entity, x))
