@@ -544,15 +544,18 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         final List<Object> parameters = keyColumns.stream()
                 .map(column -> OrientUtils.packValue(column, keys.get(column)))
                 .collect(Collectors.toList());
-
         if (parameters.isEmpty()) {
             return null;
         }
 
+        final String keyIndex = OrientUtils.keyIndex(table);
+        final String schemaName = table.getTable();
+        if (null == keyIndex || keyIndex.isEmpty()) {
+            return null;
+        }
+
         if (parameters.size() == 1) {
-            final String indexName = OrientUtils.keyIndex(table);
-            final String schemaName = table.getTable();
-            final OIndex keyIdx = this.database.getMetadata().getIndexManager().getClassIndex(schemaName, indexName);
+            final OIndex keyIdx = this.database.getMetadata().getIndexManager().getClassIndex(schemaName, keyIndex);
             if (keyIdx != null) {
                 final Object packedKey = parameters.iterator().next();
                 final Object value = keyIdx.get(packedKey);
@@ -568,7 +571,7 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         }
 
         final StringBuilder query = new StringBuilder()
-                .append("SELECT FROM INDEX:").append(OrientUtils.keyIndex(table)).append(" ")
+                .append("SELECT FROM INDEX:").append(keyIndex).append(" ")
                 .append("WHERE key");
         query.append(" = [");
         for (int i = 0; i < parameters.size(); i++) {

@@ -580,6 +580,10 @@ public class OrientUtils {
 
     static String keyIndex(final EntityMeta entity) {
         final Collection<ColumnMeta> keys = entity.getPrimaryKeys();
+        if (keys.isEmpty()) {
+            // no primary keys, no index needed
+            return null;
+        }
         if (keys.size() == 1) {
             final ColumnMeta key = keys.iterator().next();
             return entity.getTable() + "." + key.getName();

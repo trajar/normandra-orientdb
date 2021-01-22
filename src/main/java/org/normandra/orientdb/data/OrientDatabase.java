@@ -644,13 +644,13 @@ public class OrientDatabase implements Database {
 
         if (DatabaseConstruction.DROP_DATA_AND_RECREATE_SCHEMA.equals(constructionMode)) {
             // drop schema
-            if (removeEntityIndexWithSession(database, schemaName, keyIndex)) {
-                logger.debug("Removed entity [" + schemaName + "] index [" + keyIndex + "] from schema.");
-            }
-            for (final IndexMeta index : entity.getIndexed()) {
-                final String indexName = OrientUtils.propertyIndex(entity, index);
-                if (removeEntityIndexWithSession(database, schemaName, indexName)) {
-                    logger.debug("Removed entity [" + schemaName + "] index [" + indexName + "] from schema.");
+            final OClass schemaClass = database.getMetadata().getSchema().getClass(schemaName);
+            if (schemaClass != null) {
+                for (final OIndex index : schemaClass.getIndexes()) {
+                    final String indexName = index.getName();
+                    if (removeEntityIndexWithSession(database, schemaName, indexName)) {
+                        logger.debug("Removed entity [" + schemaName + "] index [" + indexName + "] from schema.");
+                    }
                 }
             }
             if (removeEntityWithSession(database, schemaName)) {
@@ -682,7 +682,7 @@ public class OrientDatabase implements Database {
                     .collect(Collectors.toSet());
             for (final OIndex existingIndex : schemaClass.getIndexes()) {
                 final String indexName = existingIndex.getName();
-                if (!indexNames.contains(indexName) && !keyIndex.equalsIgnoreCase(indexName)) {
+                if (!indexNames.contains(indexName) && (!indexName.equalsIgnoreCase(keyIndex))) {
                     if (removeEntityIndexWithSession(database, schemaName, indexName)) {
                         logger.debug("Removed entity [" + schemaName + "] index [" + indexName + "] from schema.");
                     }
@@ -702,14 +702,16 @@ public class OrientDatabase implements Database {
         }
 
         // create index as needed
-        if (!hasIndex(database, keyIndex)) {
-            final Collection<String> propertyNames = primary.stream()
-                    .filter(Objects::nonNull)
-                    .map(ColumnMeta::getName)
-                    .collect(Collectors.toList());
-            if (!propertyNames.isEmpty()) {
-                logger.debug("Adding primary id index [" + keyIndex + "] with " + propertyNames + " ...");
-                database.command(new OCommandSQL("CREATE INDEX " + keyIndex + " ON " + schemaName + " (" + StringUtils.join(propertyNames, ",") + ") UNIQUE")).execute();
+        if (keyIndex != null) {
+            if (!hasIndex(database, keyIndex)) {
+                final Collection<String> propertyNames = primary.stream()
+                        .filter(Objects::nonNull)
+                        .map(ColumnMeta::getName)
+                        .collect(Collectors.toList());
+                if (!propertyNames.isEmpty()) {
+                    logger.debug("Adding primary id index [" + keyIndex + "] with " + propertyNames + " ...");
+                    database.command(new OCommandSQL("CREATE INDEX " + keyIndex + " ON " + schemaName + " (" + StringUtils.join(propertyNames, ",") + ") UNIQUE")).execute();
+                }
             }
         }
         for (final IndexMeta index : entity.getIndexed()) {
