@@ -485,6 +485,19 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         return numReloaded;
     }
 
+    public int reloadCachedElementsByType(final Class<?> entityClass) throws NormandraException {
+        if (null == entityClass) {
+            return 0;
+        }
+
+        final EntityMeta meta = this.getMeta().getMeta(entityClass);
+        if (null == meta) {
+            return 0;
+        }
+
+        return this.reloadCachedElementsByType(meta);
+    }
+
     public int reloadCachedElementsByType(final EntityMeta meta) throws NormandraException {
         if (null == meta) {
             return 0;
