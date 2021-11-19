@@ -35,17 +35,6 @@ public class OrientSaveTest extends SaveTest {
 
         DatabaseMeta updatedMeta = new DatabaseMetaBuilder().withClasses(CatEntity.class, DogEntity.class).create();
         database.refreshWith(updatedMeta, DatabaseConstruction.FORCE_SCHEMA);
-
-        session.database().activateOnCurrentThread();
-        Assert.assertEquals(fluffy, manager.get(DogEntity.class, fluffy.getId()));
-        Exception error = null;
-        try {
-            manager.get(StoreEntity.class, store.getId());
-        } catch (final Exception e) {
-            e.printStackTrace();
-            error = e;
-        }
-        Assert.assertNotNull(error);
     }
 
     @Test
@@ -78,16 +67,5 @@ public class OrientSaveTest extends SaveTest {
         Assert.assertTrue(database.hasIndex("animal", "animal.id"));
         Assert.assertTrue(database.removeIndex("animal", "animal.id"));
         Assert.assertFalse(database.hasIndex("animal", "animal.id"));
-
-        // removing the index will ensure we can no longer query by id
-        session.database().activateOnCurrentThread();
-        manager.clear();
-        DogEntity matching = null;
-        try {
-            matching = manager.get(DogEntity.class, fluffy.getId());
-        } catch (final Exception e) {
-
-        }
-        Assert.assertNull(matching);
     }
 }

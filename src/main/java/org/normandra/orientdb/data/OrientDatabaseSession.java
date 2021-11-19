@@ -197,7 +197,6 @@ package org.normandra.orientdb.data;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.id.ORID;
-import com.orientechnologies.orient.core.index.OIndex;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.executor.OResult;
 import com.orientechnologies.orient.core.sql.executor.OResultSet;
@@ -541,48 +540,33 @@ public class OrientDatabaseSession extends AbstractTransactional implements Data
         keys.keySet().stream()
                 .filter(ColumnMeta::isPrimaryKey)
                 .forEach(keyColumns::add);
-        final List<Object> parameters = keyColumns.stream()
-                .map(column -> OrientUtils.packValue(column, keys.get(column)))
-                .collect(Collectors.toList());
-        if (parameters.isEmpty()) {
+        if (keyColumns.isEmpty()) {
             return null;
         }
 
-        final String keyIndex = OrientUtils.keyIndex(table);
-        final String schemaName = table.getTable();
-        if (null == keyIndex || keyIndex.isEmpty()) {
-            return null;
-        }
-
-        if (parameters.size() == 1) {
-            final OIndex keyIdx = this.database.getMetadata().getIndexManager().getClassIndex(schemaName, keyIndex);
-            if (keyIdx != null) {
-                final Object packedKey = parameters.iterator().next();
-                final Object value = keyIdx.get(packedKey);
-                if (null == value) {
-                    return null;
-                } else if (value instanceof OIdentifiable) {
-                    final OIdentifiable fixed = fixIdentifiable((OIdentifiable) value);
-                    if (fixed != null) {
-                        return fixed;
-                    }
+        final StringBuilder query = new StringBuilder();
+        final Map<String, Object> params = new HashMap<>(keyColumns.size());
+        query.append("select from ").append(table.getTable()).append(" where ");
+        if (keyColumns.size() == 1) {
+            final ColumnMeta singleKey = keyColumns.get(0);
+            query.append(singleKey.getName()).append(" = :key");
+            params.put("key", OrientUtils.packValue(singleKey, keys.get(singleKey)));
+        } else {
+            int num = 1;
+            boolean first = true;
+            for (final ColumnMeta key : keyColumns) {
+                if (!first) {
+                    query.append(" and ");
                 }
+                final String varname = "key" + num;
+                query.append(key.getName()).append(" = :" + varname);
+                params.put(varname, OrientUtils.packValue(key, keys.get(key)));
+                num++;
+                first = false;
             }
         }
 
-        final StringBuilder query = new StringBuilder()
-                .append("SELECT FROM INDEX:").append(keyIndex).append(" ")
-                .append("WHERE key");
-        query.append(" = [");
-        for (int i = 0; i < parameters.size(); i++) {
-            if (i > 0) {
-                query.append(",");
-            }
-            query.append("?");
-        }
-        query.append("]");
-
-        try (final OResultSet resultset = parameters.size() == 1 ? this.database.query(query.toString(), parameters.get(0)) : this.database.query(query.toString(), parameters.toArray())) {
+        try (final OResultSet resultset = this.database.query(query.toString(), params)) {
             int numMatching = 0;
             while (resultset.hasNext()) {
                 final OResult item = resultset.next();

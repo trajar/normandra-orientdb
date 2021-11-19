@@ -410,18 +410,22 @@ public class OrientDatabase implements Database {
         }
 
         if (hasCluster(database, entityName) || hasClass(database, entityName)) {
-            if (schemaClass.isEdgeType()) {
-                database.command(new OCommandSQL("DELETE EDGE " + entityName)).execute();
-                database.getMetadata().getSchema().dropClass(entityName);
-            } else if (schemaClass.isVertexType()) {
-                database.command(new OCommandSQL("DELETE VERTEX " + entityName)).execute();
-                database.getMetadata().getSchema().dropClass(entityName);
-            } else {
-                database.command(new OCommandSQL("DELETE FROM " + entityName)).execute();
+            try {
+                if (schemaClass.isEdgeType()) {
+                    database.command(new OCommandSQL("DELETE EDGE " + entityName)).execute();
+                    database.getMetadata().getSchema().dropClass(entityName);
+                } else if (schemaClass.isVertexType()) {
+                    database.command(new OCommandSQL("DELETE VERTEX " + entityName)).execute();
+                    database.getMetadata().getSchema().dropClass(entityName);
+                } else {
+                    database.command(new OCommandSQL("DELETE FROM " + entityName)).execute();
 //              database.command(new OCommandSQL("DELETE FROM " + schemaName + " UNSAFE")).execute();
-                database.getMetadata().getSchema().dropClass(entityName);
+                    database.getMetadata().getSchema().dropClass(entityName);
+                }
+                return true;
+            } catch (final Exception e) {
+                throw new IllegalStateException("Unable to delete entity schema [" + entityName + "].", e);
             }
-            return true;
         } else {
             return false;
         }
@@ -538,7 +542,7 @@ public class OrientDatabase implements Database {
 
         try (final ODatabaseDocument database = this.createDatabase()) {
             if (DatabaseConstruction.FORCE_SCHEMA.equals(constructionMode) ||
-                DatabaseConstruction.DROP_DATA_AND_RECREATE_SCHEMA.equals(constructionMode)) {
+                    DatabaseConstruction.DROP_DATA_AND_RECREATE_SCHEMA.equals(constructionMode)) {
                 // remove any classes no longer used
                 final Set<String> entityNames = databaseMeta.getEntities().stream()
                         .map(EntityMeta::getTable)
@@ -675,7 +679,7 @@ public class OrientDatabase implements Database {
         }
 
         if (DatabaseConstruction.FORCE_SCHEMA.equals(constructionMode) ||
-            DatabaseConstruction.MIGRATE_SCHEMA.equals(constructionMode)) {
+                DatabaseConstruction.MIGRATE_SCHEMA.equals(constructionMode)) {
             // remove any unused indices
             final Set<String> indexNames = entity.getIndexed().stream()
                     .map(x -> OrientUtils.propertyIndex(entity, x))
@@ -736,7 +740,7 @@ public class OrientDatabase implements Database {
                 OrientVertexType.CLASS_NAME,
                 OrientEdgeType.CLASS_NAME,
                 "OUser", "ORole", "OSequence", "OIdentity", "OFunction",
-                "OTriggered", "OSchedule", "ORestricted");
+                "OTriggered", "OSchedule", "ORestricted", "OSecurityPolicy");
         final Set<String> list = new HashSet<>(types.size());
         for (final OClass type : types) {
             final String entityClassName = type.getName();

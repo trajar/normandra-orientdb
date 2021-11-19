@@ -12,7 +12,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <orientdb.version>3.0.35</orientdb.version>
+        <orientdb.version>3.1.15</orientdb.version>
     </properties>
 
     <dependencies>

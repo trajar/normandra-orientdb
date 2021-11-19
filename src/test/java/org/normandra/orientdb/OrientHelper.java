@@ -231,13 +231,15 @@ public class OrientHelper implements TestHelper {
 
     private String serverPwd = "admin";
 
+    private String serverURL = "localhost:2424";
+
     private DatabaseConstruction constructionMode = DatabaseConstruction.CREATE_SCHEMA;
 
     private final boolean useLocalServer;
 
     private final boolean separateProcess;
 
-    private final File orientDist = new File("src/test/dist/orientdb-3.0.35.zip");
+    private final File orientDist = new File("src/test/dist/orientdb-3.1.15.zip");
 
     private final File extractedDistro = new File("target/localServerDistro");
 
