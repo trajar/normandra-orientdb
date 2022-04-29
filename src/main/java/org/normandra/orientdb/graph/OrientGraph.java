@@ -207,10 +207,10 @@ import org.normandra.data.StaticEntityReference;
 import org.normandra.graph.*;
 import org.normandra.meta.EntityMeta;
 import org.normandra.meta.GraphMeta;
-import org.normandra.orientdb.data.impl.OrientDataFactory;
 import org.normandra.orientdb.data.OrientDatabaseSession;
 import org.normandra.orientdb.data.OrientSelfClosingEntityQuery;
 import org.normandra.orientdb.data.OrientUtils;
+import org.normandra.orientdb.data.impl.OrientDataFactory;
 import org.normandra.property.MemoryPropertyModel;
 import org.normandra.property.PropertyFilter;
 import org.normandra.property.PropertyModel;
@@ -585,8 +585,17 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         }
 
         final Object key = OrientUtils.unpackKey(meta, document);
+        if (key != null) {
+            final OrientNode cached = this.cache.get(meta, key, OrientNode.class);
+            if (cached != null) {
+                return cached;
+            }
+        }
+
         final EntityReference data = new OrientEntityReference(this, meta, document);
-        return this.buildNode(meta, key, new com.tinkerpop.blueprints.impls.orient.OrientVertex(this.graph, document), data);
+        final OrientNode<T> orientNode = new OrientNode<>(this, new com.tinkerpop.blueprints.impls.orient.OrientVertex(this.graph, document), meta, data);
+        this.cache.put(meta, key, orientNode);
+        return orientNode;
     }
 
     final <T> OrientNode<T> buildNode(final EntityMeta meta, final Object key, final com.tinkerpop.blueprints.impls.orient.OrientVertex vertex, final EntityReference<T> data) {
@@ -616,8 +625,17 @@ public class OrientGraph extends OrientDatabaseSession implements Graph {
         }
 
         final Object key = OrientUtils.unpackKey(meta, document);
+        if (key != null) {
+            final OrientEdge cached = this.cache.get(meta, key, OrientEdge.class);
+            if (cached != null) {
+                return cached;
+            }
+        }
+
         final EntityReference data = new OrientEntityReference(this, meta, document);
-        return this.buildEdge(meta, key, this.graph.getEdge(document), data);
+        final OrientEdge<T> orientEdge = new OrientEdge<>(this, this.graph.getEdge(document), meta, data);
+        this.cache.put(meta, key, orientEdge);
+        return orientEdge;
     }
 
     final <T> OrientEdge<T> buildEdge(final EntityMeta meta, final Object key, final com.tinkerpop.blueprints.impls.orient.OrientEdge edge, final EntityReference<T> data) {

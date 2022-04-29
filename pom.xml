@@ -7,12 +7,12 @@
 
     <groupId>org.normandra</groupId>
     <artifactId>normandra-orientdb</artifactId>
-    <version>1.25</version>
+    <version>1.26</version>
     <packaging>jar</packaging>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <orientdb.version>3.1.15</orientdb.version>
+        <orientdb.version>3.1.16</orientdb.version>
     </properties>
 
     <dependencies>
@@ -31,9 +31,9 @@
         </dependency>
         <!-- apache commons -->
         <dependency>
-            <groupId>commons-collections</groupId>
-            <artifactId>commons-collections</artifactId>
-            <version>3.2.2</version>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
+            <version>4.4</version>
         </dependency>
         <dependency>
             <groupId>commons-codec</groupId>
@@ -63,7 +63,7 @@
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpcore</artifactId>
-            <version>4.4.14</version>
+            <version>4.4.15</version>
         </dependency>
         <!-- jackson 2.x -->
         <dependency>
@@ -118,7 +118,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.7.32</version>
+            <version>1.7.36</version>
         </dependency>
     </dependencies>
 
