@@ -195,6 +195,7 @@
 package org.normandra.orientdb.data;
 
 import com.orientechnologies.orient.core.Orient;
+import com.orientechnologies.orient.core.config.OGlobalConfiguration;
 import com.orientechnologies.orient.core.db.ODatabaseType;
 import com.orientechnologies.orient.core.db.OrientDB;
 import com.orientechnologies.orient.core.db.OrientDBConfig;
@@ -230,6 +231,13 @@ public class LocalFileOrientPool implements OrientPool {
 
     private boolean first = true;
 
+    public static OrientDBConfig defaultConfig() {
+        boolean crateDefaultUsers = "true".equalsIgnoreCase(System.getProperty("security.createDefaultUsers", "false"));
+        return OrientDBConfig.builder()
+                .addConfig(OGlobalConfiguration.CREATE_DEFAULT_USERS, crateDefaultUsers)
+                .build();
+    }
+
     public LocalFileOrientPool(final String url, final String database) {
         this(url, database, null, null);
     }
@@ -239,7 +247,7 @@ public class LocalFileOrientPool implements OrientPool {
         this.username = user;
         this.password = pwd;
         this.database = database;
-        this.orientdb = new OrientDB(url, OrientDBConfig.defaultConfig());
+        this.orientdb = new OrientDB(url, defaultConfig());
         this.timer = new Timer(this.getClass().getName() + "-Timer", true);
     }
 

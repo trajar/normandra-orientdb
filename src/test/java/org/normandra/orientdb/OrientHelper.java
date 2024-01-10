@@ -297,6 +297,7 @@ public class OrientHelper implements TestHelper {
     @Override
     public void create(DatabaseMetaBuilder builder) throws Exception {
         cleanupDirs();
+        System.setProperty("security.createDefaultUsers", "true");
         Orient.instance().startup();
         if (useLocalServer) {
             database = OrientDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, separateProcess, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), builder);
@@ -309,6 +310,7 @@ public class OrientHelper implements TestHelper {
     @Override
     public void create(GraphMetaBuilder builder) throws Exception {
         cleanupDirs();
+        System.setProperty("security.createDefaultUsers", "true");
         Orient.instance().startup();
         if (useLocalServer) {
             database = OrientGraphDatabase.createLocalServer(extractDistro(), databaseName, serverUser, serverPwd, separateProcess, new StrongMemoryCache.Factory(MapFactory.withConcurrency()), builder);

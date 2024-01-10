@@ -264,8 +264,15 @@ public class OrientDatabase implements Database {
             final File path, final String database,
             final EntityCacheFactory factory,
             final Collection<Class> types) {
+        return createLocalFile(path, database, "admin", "admin", factory, types);
+    }
+
+    public static OrientDatabase createLocalFile(
+            final File path, final String database, final String userid, final String password,
+            final EntityCacheFactory factory,
+            final Collection<Class> types) {
         final String url = "plocal:" + FilenameUtils.normalize(path.getAbsolutePath());
-        final OrientPool pool = new LocalFileOrientPool(url, database, "admin", "admin");
+        final OrientPool pool = new LocalFileOrientPool(url, database, userid, password);
         final AnnotationParser parser = new AnnotationParser(columnFactory, types);
         final DatabaseMeta meta = new DatabaseMeta(parser.read());
         return new OrientDatabase(url, pool, factory, meta);
@@ -275,8 +282,15 @@ public class OrientDatabase implements Database {
             final File path, final String database,
             final EntityCacheFactory factory,
             final DatabaseMetaBuilder metaBuilder) {
+        return createLocalFile(path, database, "admin", "admin", factory, metaBuilder);
+    }
+
+    public static OrientDatabase createLocalFile(
+            final File path, final String database, final String userid, final String password,
+            final EntityCacheFactory factory,
+            final DatabaseMetaBuilder metaBuilder) {
         final String url = "plocal:" + FilenameUtils.normalize(path.getAbsolutePath());
-        final OrientPool pool = new LocalFileOrientPool(url, database, "admin", "admin");
+        final OrientPool pool = new LocalFileOrientPool(url, database, userid, password);
         final DatabaseMeta meta = metaBuilder.withColumnFactory(columnFactory).create();
         return new OrientDatabase(url, pool, factory, meta);
     }
